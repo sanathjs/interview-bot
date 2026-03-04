@@ -104,36 +104,35 @@ export default function InputBar({ onSend, disabled }: Props) {
   const micButton = () => {
     if (micState === "transcribing") return (
       <button disabled
-        className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gray-100
-                   text-gray-400 flex items-center justify-center
-                   flex-shrink-0 cursor-not-allowed">
-        <Loader2 size={15} className="animate-spin" />
+        className="w-9 h-9 rounded-xl bg-gray-100 text-gray-400
+                   flex items-center justify-center flex-shrink-0
+                   cursor-not-allowed">
+        <Loader2 size={14} className="animate-spin" />
       </button>
     );
     if (micState === "recording") return (
       <button onClick={handleMicClick}
-        className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-red-500
-                   text-white flex items-center justify-center
-                   flex-shrink-0 hover:bg-red-600 animate-pulse
-                   transition-colors">
-        <MicOff size={15} />
+        className="w-9 h-9 rounded-xl bg-red-500 text-white
+                   flex items-center justify-center flex-shrink-0
+                   hover:bg-red-600 animate-pulse transition-colors">
+        <MicOff size={14} />
       </button>
     );
     return (
       <button onClick={handleMicClick} disabled={disabled}
-        className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl border
-                   border-gray-200 text-gray-500 flex items-center
-                   justify-center flex-shrink-0 hover:border-gray-300
-                   hover:text-gray-700 disabled:opacity-40
-                   disabled:cursor-not-allowed transition-colors">
-        <Mic size={15} />
+        className="w-9 h-9 rounded-xl border border-gray-200 text-gray-500
+                   flex items-center justify-center flex-shrink-0
+                   hover:border-gray-300 hover:text-gray-700
+                   disabled:opacity-40 disabled:cursor-not-allowed
+                   transition-colors">
+        <Mic size={14} />
       </button>
     );
   };
 
   return (
-    <div className="border-t border-gray-100 bg-white px-3 sm:px-4 py-3 sm:py-4">
-      <div className="flex gap-2 items-end max-w-3xl mx-auto">
+    <div className="border-t border-gray-100 bg-white px-3 py-3">
+      <div className="flex gap-2 items-end w-full max-w-3xl mx-auto">
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
@@ -145,23 +144,22 @@ export default function InputBar({ onSend, disabled }: Props) {
             "Type your question..."
           }
           rows={1}
-          className="flex-1 resize-none rounded-xl border border-gray-200
-                     px-3 py-2.5 sm:px-4 sm:py-3 text-sm text-gray-800
-                     placeholder-gray-400 focus:outline-none
-                     focus:ring-2 focus:ring-gray-200
+          className="flex-1 min-w-0 resize-none rounded-xl border border-gray-200
+                     px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400
+                     focus:outline-none focus:ring-2 focus:ring-gray-200
                      disabled:opacity-50 disabled:cursor-not-allowed
-                     max-h-32 overflow-y-auto"
-          style={{ minHeight: "42px" }}
+                     overflow-y-auto"
+          style={{ minHeight: "40px", maxHeight: "100px" }}
         />
         {micButton()}
         <button
           onClick={handleSend}
           disabled={disabled || !input.trim() || micState !== "idle"}
-          className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gray-900
-                     text-white flex items-center justify-center
-                     flex-shrink-0 hover:bg-gray-700 disabled:opacity-40
+          className="w-9 h-9 rounded-xl bg-gray-900 text-white
+                     flex items-center justify-center flex-shrink-0
+                     hover:bg-gray-700 disabled:opacity-40
                      disabled:cursor-not-allowed transition-colors">
-          <Send size={15} />
+          <Send size={14} />
         </button>
       </div>
 

@@ -1,55 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { MessageSquare, Brain, History, Bot } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Bot, MessageSquare, Brain, History, LogOut } from "lucide-react";
 
-const links = [
+const adminLinks = [
   { href: "/chat",     icon: MessageSquare, label: "Chat"     },
-  { href: "/prep",     icon: Brain,         label: "Prep"     },
   { href: "/sessions", icon: History,       label: "Sessions" },
+  { href: "/prep",     icon: Brain,         label: "Prep"     },
 ];
 
 export default function Navbar() {
-  const path = usePathname();
+  const pathname = usePathname();
+  const router   = useRouter();
+
+  const isAdmin =
+    typeof window !== "undefined" &&
+    localStorage.getItem("ib_role") === "admin";
+
+  const handleExit = () => {
+    localStorage.removeItem("ib_role");
+    localStorage.removeItem("ib_interviewer_name");
+    localStorage.removeItem("ib_company_name");
+    router.push("/");
+  };
 
   return (
-    <header className="bg-white border-b border-gray-100 px-4 sm:px-6
-                       py-3 flex items-center justify-between
-                       sticky top-0 z-20">
+    <nav className="bg-white border-b border-gray-100 px-4 py-3
+                    flex items-center justify-between sticky top-0 z-10">
 
       {/* Logo */}
-      <Link href="/" className="flex items-center gap-2 group">
-        <div className="w-7 h-7 rounded-full bg-gray-900
-                        flex items-center justify-center">
+      <Link href="/" className="flex items-center gap-2.5">
+        <div className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center">
           <Bot size={14} className="text-white" />
         </div>
-        <span className="text-sm font-semibold text-gray-900
-                         group-hover:text-gray-600 transition-colors
-                         hidden sm:block">
+        <span className="text-sm font-semibold text-gray-900 hidden sm:block">
           Interview Bot
         </span>
       </Link>
 
-      {/* Nav — icon only on mobile, icon+label on sm+ */}
-      <nav className="flex items-center gap-1">
-        {links.map(({ href, icon: Icon, label }) => {
-          const active = path === href || path.startsWith(href + "/");
-          return (
+      {/* Admin nav links */}
+      {isAdmin && (
+        <div className="flex items-center gap-1">
+          {adminLinks.map(({ href, icon: Icon, label }) => (
             <Link key={href} href={href}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3
-                         py-1.5 rounded-xl text-xs font-medium
-                         transition-colors
-                         ${active
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                         text-xs font-medium transition-colors
+                         ${pathname === href
                            ? "bg-gray-900 text-white"
-                           : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                           : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                          }`}>
-              <Icon size={14} />
+              <Icon size={13} />
               <span className="hidden sm:inline">{label}</span>
             </Link>
-          );
-        })}
-      </nav>
-    </header>
+          ))}
+        </div>
+      )}
+
+      {/* Exit button */}
+      <button
+        onClick={handleExit}
+        className="flex items-center gap-1.5 text-xs text-gray-400
+                   hover:text-gray-600 transition-colors px-2 py-1.5
+                   rounded-xl hover:bg-gray-50">
+        <LogOut size={13} />
+        <span className="hidden sm:inline">Exit</span>
+      </button>
+    </nav>
   );
 }

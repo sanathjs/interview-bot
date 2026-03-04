@@ -53,6 +53,22 @@ public class ChatService
             request.Message,
             null, null, null);
 
+// Step 2.5: Handle greetings / small talk
+if (IsGreeting(request.Message))
+{
+    var greetingResponse = GetGreetingResponse(request.Message);
+    await SaveMessageAsync(request.SessionId, "bot", greetingResponse,
+        null, "greeting", null);
+    return new ChatResponse
+    {
+        Answer = greetingResponse,
+        AnswerSource = "greeting",
+        ConfidenceScore = 1.0,
+        UsedFallback = false,
+        SessionId = request.SessionId,
+        Sources = new List<SourceChunk>()
+    };
+}
         // Step 3: Search knowledge base
         var (results, topScore) = await _search.SearchAsync(request.Message, topK: 10);
         var confidenceLevel = _search.GetConfidenceLevel(topScore);
@@ -983,6 +999,105 @@ public async Task<object?> GetTranscriptByIdAsync(int sessionId)
         sess.avgConfidenceScore,
         messages,
     };
+}
+
+// ================================================================
+// 1. ADD THIS TO Models.cs — new request model
+// ================================================================
+
+public class UpdateSessionDetailsRequest
+{
+    public string? InterviewerName { get; set; }
+    public string? CompanyName     { get; set; }
+}
+
+
+// ================================================================
+// 2. ADD THESE TWO METHODS TO ChatService.cs
+// Place them near the other DB helper methods
+// ================================================================
+
+// PATCH session details — interviewer name + company
+public async Task UpdateSessionDetailsAsync(
+    string sessionCode,
+    UpdateSessionDetailsRequest request)
+{
+    var dataSourceBuilder = new NpgsqlDataSourceBuilder(_connectionString);
+    dataSourceBuilder.UseVector();
+    await using var dataSource = dataSourceBuilder.Build();
+    await using var conn = await dataSource.OpenConnectionAsync();
+
+    await using var cmd = new NpgsqlCommand(@"
+        UPDATE interview_sessions
+        SET interviewer_name = COALESCE(@interviewerName, interviewer_name),
+            company_name     = COALESCE(@companyName, company_name)
+        WHERE session_code = @code",
+        conn);
+
+    cmd.Parameters.AddWithValue("code", sessionCode);
+    cmd.Parameters.AddWithValue("interviewerName",
+        request.InterviewerName ?? (object)DBNull.Value);
+    cmd.Parameters.AddWithValue("companyName",
+        request.CompanyName ?? (object)DBNull.Value);
+
+    await cmd.ExecuteNonQueryAsync();
+}
+
+private static bool IsGreeting(string message)
+{
+    var greetings = new[]
+    {
+        "hi", "hello", "hey", "good morning", "good afternoon",
+        "good evening", "how are you", "how are you doing",
+        "nice to meet you", "pleased to meet you", "greetings",
+        "howdy", "sup", "what's up", "whats up", "hiya"
+    };
+    var lower = message.Trim().ToLower().TrimEnd('!', '.', '?');
+    return greetings.Any(g => lower == g || lower.StartsWith(g + " "));
+}
+
+private static string GetGreetingResponse(string message)
+{
+    var lower = message.Trim().ToLower();
+
+    if (lower.Contains("how are you") || lower.Contains("how are you doing"))
+        return "I'm doing great, thank you for asking! Ready to tell you all about Sanath's experience. What would you like to know?";
+
+    if (lower.Contains("good morning"))
+        return "Good morning! Great to have you here. Feel free to ask me anything about Sanath's background, skills, or experience.";
+
+    if (lower.Contains("good afternoon"))
+        return "Good afternoon! Happy to help. Go ahead and ask me anything about Sanath.";
+
+    if (lower.Contains("good evening"))
+        return "Good evening! Feel free to dive right in — ask me anything about Sanath's experience or skills.";
+
+    if (lower.Contains("nice to meet") || lower.Contains("pleased to meet"))
+        return "Nice to meet you too! I'm here to represent Sanath Kumar J S. What would you like to know about him?";
+
+    // Default hi/hello/hey
+    return "Hello! Great to have you here. I'm Sanath's interview assistant — feel free to ask me anything about his experience, skills, or background. What would you like to start with?";
+}
+
+// POST end session — mark as completed + set ended_at
+public async Task EndSessionAsync(string sessionCode)
+{
+    var dataSourceBuilder = new NpgsqlDataSourceBuilder(_connectionString);
+    dataSourceBuilder.UseVector();
+    await using var dataSource = dataSourceBuilder.Build();
+    await using var conn = await dataSource.OpenConnectionAsync();
+
+    await using var cmd = new NpgsqlCommand(@"
+        UPDATE interview_sessions
+        SET status   = 'completed',
+            ended_at = NOW()
+        WHERE session_code = @code",
+        conn);
+
+    cmd.Parameters.AddWithValue("code", sessionCode);
+    await cmd.ExecuteNonQueryAsync();
+
+    _logger.LogInformation("Session ended: {Code}", sessionCode);
 }
 
 }

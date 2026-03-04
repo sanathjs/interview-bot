@@ -158,4 +158,44 @@ public async Task<IActionResult> GetSessionDetail(int id)
         return StatusCode(500, new { error = "Something went wrong" });
     }
 }
+// ================================================================
+// ADD THESE TWO ENDPOINTS TO ChatController.cs
+// Place them after the existing GetSessionDetail endpoint
+// ================================================================
+
+// PATCH /api/sessions/{sessionCode}/details
+// Called right after session is created — saves interviewer name + company
+[HttpPatch("sessions/{sessionCode}/details")]
+public async Task<IActionResult> UpdateSessionDetails(
+    string sessionCode,
+    [FromBody] UpdateSessionDetailsRequest request)
+{
+    try
+    {
+        await _chat.UpdateSessionDetailsAsync(sessionCode, request);
+        return Ok(new { message = "Session details updated ✅" });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "UpdateSessionDetails error for {Code}", sessionCode);
+        return StatusCode(500, new { error = "Something went wrong" });
+    }
+}
+
+// POST /api/sessions/{sessionCode}/end
+// Called when interviewer clicks End Session
+[HttpPost("sessions/{sessionCode}/end")]
+public async Task<IActionResult> EndSession(string sessionCode)
+{
+    try
+    {
+        await _chat.EndSessionAsync(sessionCode);
+        return Ok(new { message = "Session ended ✅" });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "EndSession error for {Code}", sessionCode);
+        return StatusCode(500, new { error = "Something went wrong" });
+    }
+}
 }

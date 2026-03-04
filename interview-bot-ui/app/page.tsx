@@ -1,120 +1,217 @@
 "use client";
 
-import Link from "next/link";
-import { MessageSquare, Brain, History, ChevronRight, Bot } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Bot, Lock, User, ChevronRight, Eye, EyeOff } from "lucide-react";
 
-const routes = [
-	{
-		href: "/chat",
-		icon: MessageSquare,
-		label: "Interview Chat",
-		description: "Start or continue a live interview session",
-		accent: "bg-gray-900 text-white",
-		iconBg: "bg-white/10",
-	},
-	{
-		href: "/prep",
-		icon: Brain,
-		label: "Prep Dashboard",
-		description: "Review unanswered questions and build your knowledge base",
-		accent: "bg-white border border-gray-200 text-gray-900",
-		iconBg: "bg-gray-100",
-	},
-	{
-		href: "/sessions",
-		icon: History,
-		label: "Session History",
-		description: "Browse past interviews and read full transcripts",
-		accent: "bg-white border border-gray-200 text-gray-900",
-		iconBg: "bg-gray-100",
-	},
-];
+const PREP_PIN = process.env.NEXT_PUBLIC_PREP_PIN || "1234";
 
 export default function HomePage() {
-	return (
-		<div className="min-h-screen bg-gray-50 flex flex-col">
-			{/* Top bar */}
-			<header className="bg-white border-b border-gray-100 px-6 py-4">
-				<div className="max-w-3xl mx-auto flex items-center gap-3">
-					<div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
-						<Bot size={16} className="text-white" />
-					</div>
-					<span className="text-sm font-semibold text-gray-900">
-						Interview Bot
-					</span>
-				</div>
-			</header>
+  const router = useRouter();
+  const [step, setStep] = useState<"choose" | "pin" | "interviewer">("choose");
 
-			{/* Hero */}
-			<main className="flex-1 max-w-3xl mx-auto w-full px-4 py-12">
-				<div className="mb-10">
-					<h1 className="text-2xl font-semibold text-gray-900 mb-2">
-						Hey, Sanath 👋
-					</h1>
-					<p className="text-sm text-gray-500 leading-relaxed max-w-md">
-						Your AI-powered interview assistant. Start a session, review what you
-						missed, or read back through past interviews.
-					</p>
-				</div>
+  // PIN flow
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [showPin, setShowPin] = useState(false);
 
-				{/* Route cards */}
-				<div className="flex flex-col gap-3">
-					{routes.map(
-						({ href, icon: Icon, label, description, accent, iconBg }) => (
-							<Link
-								key={href}
-								href={href}
-								className={`group flex items-center gap-4 px-5 py-4 rounded-2xl transition-all hover:shadow-sm hover:scale-[1.01] ${accent}`}
-							>
-								<div
-									className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}
-								>
-									<Icon size={18} />
-								</div>
+  // Interviewer flow
+  const [interviewerName, setInterviewerName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [interviewerError, setInterviewerError] = useState("");
 
-								<div className="flex-1 min-w-0">
-									<p className="text-sm font-semibold">{label}</p>
-									<p
-										className={`text-xs mt-0.5 truncate ${
-											accent.includes("gray-900") && !accent.includes("border")
-												? "text-gray-400"
-												: "text-gray-500"
-										}`}
-									>
-										{description}
-									</p>
-								</div>
+  const handlePinSubmit = () => {
+    if (pin === PREP_PIN) {
+      localStorage.setItem("ib_role", "admin");
+      router.push("/chat");
+    } else {
+      setPinError("Incorrect PIN. Try again.");
+      setPin("");
+    }
+  };
 
-								<ChevronRight
-									size={16}
-									className="flex-shrink-0 opacity-40 group-hover:opacity-70 transition-opacity"
-								/>
-							</Link>
-						)
-					)}
-				</div>
+  const handleInterviewerSubmit = () => {
+    if (!interviewerName.trim()) {
+      setInterviewerError("Please enter your name.");
+      return;
+    }
+    if (!companyName.trim()) {
+      setInterviewerError("Please enter your company name.");
+      return;
+    }
+    localStorage.setItem("ib_role", "interviewer");
+    localStorage.setItem("ib_interviewer_name", interviewerName.trim());
+    localStorage.setItem("ib_company_name", companyName.trim());
+    router.push("/chat");
+  };
 
-				{/* Quick stats strip — purely decorative, wires up naturally */}
-				<div className="grid grid-cols-3 gap-3 mt-8">
-					{[
-						{ label: "Knowledge Base", value: "13 files" },
-						{ label: "KB Chunks", value: "70 chunks" },
-						{ label: "LLM", value: "Groq · Llama 3" },
-					].map(({ label, value }) => (
-						<div
-							key={label}
-							className="bg-white border border-gray-200 rounded-2xl px-4 py-3 text-center"
-						>
-							<p className="text-xs text-gray-400 mb-1">{label}</p>
-							<p className="text-sm font-semibold text-gray-800">{value}</p>
-						</div>
-					))}
-				</div>
-			</main>
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
 
-			<footer className="text-center text-xs text-gray-300 py-6">
-				Built by Sanath Kumar J S · {new Date().getFullYear()}
-			</footer>
-		</div>
-	);
+      {/* Logo */}
+      <div className="flex items-center gap-3 mb-10">
+        <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center">
+          <Bot size={20} className="text-white" />
+        </div>
+        <span className="text-base font-semibold text-gray-900">Interview Bot</span>
+      </div>
+
+      <div className="w-full max-w-sm">
+
+        {/* ── STEP: CHOOSE ROLE ── */}
+        {step === "choose" && (
+          <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm">
+            <h1 className="text-lg font-semibold text-gray-900 mb-1">Welcome</h1>
+            <p className="text-sm text-gray-400 mb-8">Who are you today?</p>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => setStep("interviewer")}
+                className="group flex items-center gap-4 px-5 py-4 rounded-2xl
+                           bg-gray-900 text-white hover:bg-gray-800
+                           transition-all hover:scale-[1.01]">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                  <User size={17} />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-semibold">I'm an Interviewer</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Start a new interview session</p>
+                </div>
+                <ChevronRight size={15} className="opacity-40 group-hover:opacity-70 transition-opacity" />
+              </button>
+
+              <button
+                onClick={() => setStep("pin")}
+                className="group flex items-center gap-4 px-5 py-4 rounded-2xl
+                           bg-white border border-gray-200 text-gray-900
+                           hover:border-gray-300 hover:shadow-sm
+                           transition-all hover:scale-[1.01]">
+                <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+                  <Lock size={17} className="text-gray-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-semibold">I'm Sanath</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Admin access with PIN</p>
+                </div>
+                <ChevronRight size={15} className="opacity-40 group-hover:opacity-70 transition-opacity" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP: PIN ── */}
+        {step === "pin" && (
+          <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm">
+            <button
+              onClick={() => { setStep("choose"); setPin(""); setPinError(""); }}
+              className="text-xs text-gray-400 hover:text-gray-600 mb-6 flex items-center gap-1">
+              ← Back
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900 mb-1">Admin Access</h1>
+            <p className="text-sm text-gray-400 mb-8">Enter your PIN to continue</p>
+
+            <div className="flex flex-col gap-4">
+              <div className="relative">
+                <input
+                  type={showPin ? "text" : "password"}
+                  value={pin}
+                  onChange={e => { setPin(e.target.value); setPinError(""); }}
+                  onKeyDown={e => e.key === "Enter" && handlePinSubmit()}
+                  placeholder="Enter PIN"
+                  className="w-full px-4 py-3 pr-10 rounded-2xl border border-gray-200
+                             text-sm text-gray-900 placeholder-gray-400
+                             focus:outline-none focus:border-gray-400 transition-colors"
+                  autoFocus
+                />
+                <button
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {showPin ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+
+              {pinError && (
+                <p className="text-xs text-red-500">{pinError}</p>
+              )}
+
+              <button
+                onClick={handlePinSubmit}
+                disabled={!pin}
+                className="w-full py-3 rounded-2xl bg-gray-900 text-white text-sm font-medium
+                           hover:bg-gray-800 transition-colors disabled:opacity-40
+                           disabled:cursor-not-allowed">
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP: INTERVIEWER DETAILS ── */}
+        {step === "interviewer" && (
+          <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm">
+            <button
+              onClick={() => { setStep("choose"); setInterviewerError(""); }}
+              className="text-xs text-gray-400 hover:text-gray-600 mb-6 flex items-center gap-1">
+              ← Back
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900 mb-1">Before we start</h1>
+            <p className="text-sm text-gray-400 mb-8">Tell us a bit about yourself</p>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1.5 block">
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  value={interviewerName}
+                  onChange={e => { setInterviewerName(e.target.value); setInterviewerError(""); }}
+                  onKeyDown={e => e.key === "Enter" && handleInterviewerSubmit()}
+                  placeholder="e.g. Priya Sharma"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200
+                             text-sm text-gray-900 placeholder-gray-400
+                             focus:outline-none focus:border-gray-400 transition-colors"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1.5 block">
+                  Company
+                </label>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={e => { setCompanyName(e.target.value); setInterviewerError(""); }}
+                  onKeyDown={e => e.key === "Enter" && handleInterviewerSubmit()}
+                  placeholder="e.g. Google"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200
+                             text-sm text-gray-900 placeholder-gray-400
+                             focus:outline-none focus:border-gray-400 transition-colors"
+                />
+              </div>
+
+              {interviewerError && (
+                <p className="text-xs text-red-500">{interviewerError}</p>
+              )}
+
+              <button
+                onClick={handleInterviewerSubmit}
+                disabled={!interviewerName.trim() || !companyName.trim()}
+                className="w-full py-3 rounded-2xl bg-gray-900 text-white text-sm font-medium
+                           hover:bg-gray-800 transition-colors disabled:opacity-40
+                           disabled:cursor-not-allowed mt-2">
+                Start Interview
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      <p className="text-xs text-gray-300 mt-10">
+        Built by Sanath Kumar J S · {new Date().getFullYear()}
+      </p>
+    </div>
+  );
 }
