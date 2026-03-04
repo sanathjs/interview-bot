@@ -132,9 +132,9 @@ export default function MessageBubble({ message }: Props) {
         </div>
 
         {/* Sources — wrap on mobile */}
-        {isBot && message.sources?.length > 0 && !isUnanswered && (
+        {isBot && (message.sources?.length ?? 0) > 0 && !isUnanswered && (
           <div className="flex flex-wrap gap-1 px-1">
-            {message.sources.map((s, i) => (
+            {message.sources?.map((s, i) => (
               <span key={i}
                 className="text-xs text-gray-400 bg-gray-50 border
                            border-gray-100 rounded-full px-2 py-0.5">
