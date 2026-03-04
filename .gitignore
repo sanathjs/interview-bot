@@ -1,0 +1,14 @@
+# Frontend
+interview-bot-ui/.next/
+interview-bot-ui/node_modules/
+interview-bot-ui/.env.local
+
+# Backend — secrets never committed
+interview-bot-api/appsettings.json
+interview-bot-api/appsettings.Development.json
+interview-bot-api/bin/
+interview-bot-api/obj/
+
+# OS
+.DS_Store
+Thumbs.db
