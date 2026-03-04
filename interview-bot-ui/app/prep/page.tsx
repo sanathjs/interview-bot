@@ -1,10 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getUnanswered, saveAnswer, promoteToKb,
-         deleteUnanswered } from "@/lib/api";
-import { Brain, CheckCircle, Trash2, BookOpen,
-         Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { getUnanswered, saveAnswer, promoteToKb, deleteUnanswered } from "@/lib/api";
+
+const C = {
+  bg:     "#0d0d0f",
+  card:   "#1c1c21",
+  border: "#32323c",
+  text:   "#e8e8ef",
+  muted:  "#6b6b7d",
+  subtle: "#9292a4",
+  amber:  "#f59e0b",
+  input:  "#141417",
+};
 
 interface UnansweredQuestion {
   id: number;
@@ -20,40 +28,37 @@ interface UnansweredQuestion {
 
 const PIN = process.env.NEXT_PUBLIC_PREP_PIN || "1234";
 
-const priorityColor = {
-  high:   "bg-red-100 text-red-700 border-red-200",
-  medium: "bg-amber-100 text-amber-700 border-amber-200",
-  low:    "bg-gray-100 text-gray-600 border-gray-200",
+const priorityStyle = {
+  high:   { bg: "rgba(248,113,113,0.08)",  border: "rgba(248,113,113,0.2)",  color: "#f87171" },
+  medium: { bg: "rgba(245,158,11,0.08)",   border: "rgba(245,158,11,0.2)",   color: "#fbbf24" },
+  low:    { bg: "rgba(100,100,120,0.1)",   border: "#32323c",                color: "#9292a4" },
 };
 
-const statusColor: Record<string, string> = {
-  new:         "bg-blue-50 text-blue-600",
-  ready:       "bg-green-50 text-green-600",
-  added_to_kb: "bg-purple-50 text-purple-600",
+const statusStyle: Record<string, { bg: string; border: string; color: string }> = {
+  new:         { bg: "rgba(99,102,241,0.08)",  border: "rgba(99,102,241,0.2)",  color: "#818cf8" },
+  ready:       { bg: "rgba(52,211,153,0.08)",  border: "rgba(52,211,153,0.2)",  color: "#34d399" },
+  added_to_kb: { bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.2)",  color: "#fbbf24" },
 };
 
 export default function PrepPage() {
-  const [unlocked, setUnlocked]       = useState(false);
-  const [pin, setPin]                 = useState("");
-  const [pinError, setPinError]       = useState(false);
-  const [questions, setQuestions]     = useState<UnansweredQuestion[]>([]);
-  const [filter, setFilter]           = useState("all");
-  const [answers, setAnswers]         = useState<Record<number, string>>({});
-  const [expanded, setExpanded]       = useState<Record<number, boolean>>({});
-  const [saving, setSaving]           = useState<Record<number, boolean>>({});
-  const [promoting, setPromoting]     = useState<Record<number, boolean>>({});
-  const [deleting, setDeleting]       = useState<Record<number, boolean>>({});
-  const [feedback, setFeedback]       = useState<Record<number, string>>({});
-  const [loading, setLoading]         = useState(false);
+  const [unlocked, setUnlocked]   = useState(false);
+  const [pin, setPin]             = useState("");
+  const [pinError, setPinError]   = useState(false);
+  const [showPin, setShowPin]     = useState(false);
+  const [questions, setQuestions] = useState<UnansweredQuestion[]>([]);
+  const [filter, setFilter]       = useState("all");
+  const [answers, setAnswers]     = useState<Record<number, string>>({});
+  const [expanded, setExpanded]   = useState<Record<number, boolean>>({});
+  const [saving, setSaving]       = useState<Record<number, boolean>>({});
+  const [promoting, setPromoting] = useState<Record<number, boolean>>({});
+  const [deleting, setDeleting]   = useState<Record<number, boolean>>({});
+  const [feedback, setFeedback]   = useState<Record<number, string>>({});
+  const [loading, setLoading]     = useState(false);
+  const [focused, setFocused]     = useState<number | null>(null);
 
   const handleUnlock = () => {
-    if (pin === PIN) {
-      setUnlocked(true);
-      setPinError(false);
-    } else {
-      setPinError(true);
-      setPin("");
-    }
+    if (pin === PIN) { setUnlocked(true); setPinError(false); }
+    else { setPinError(true); setPin(""); }
   };
 
   useEffect(() => {
@@ -63,317 +68,376 @@ export default function PrepPage() {
 
   const fetchQuestions = async () => {
     setLoading(true);
-    try {
-      const data = await getUnanswered();
-      setQuestions(data.questions);
-    } catch {
-      console.error("Failed to fetch");
-    } finally {
-      setLoading(false);
-    }
+    try { const data = await getUnanswered(); setQuestions(data.questions); }
+    catch { /* silent */ }
+    finally { setLoading(false); }
   };
 
   const handleSave = async (id: number) => {
-    const answer = answers[id];
-    if (!answer?.trim()) return;
-    setSaving({ ...saving, [id]: true });
+    if (!answers[id]?.trim()) return;
+    setSaving(p => ({ ...p, [id]: true }));
     try {
-      await saveAnswer(id, answer);
-      setFeedback({ ...feedback, [id]: "saved" });
+      await saveAnswer(id, answers[id]);
+      setFeedback(p => ({ ...p, [id]: "saved" }));
       await fetchQuestions();
-    } catch {
-      setFeedback({ ...feedback, [id]: "error" });
-    } finally {
-      setSaving({ ...saving, [id]: false });
-    }
+    } catch { setFeedback(p => ({ ...p, [id]: "error" })); }
+    finally { setSaving(p => ({ ...p, [id]: false })); }
   };
 
   const handlePromote = async (id: number) => {
-    setPromoting({ ...promoting, [id]: true });
+    setPromoting(p => ({ ...p, [id]: true }));
     try {
       await promoteToKb(id);
-      setFeedback({ ...feedback, [id]: "promoted" });
+      setFeedback(p => ({ ...p, [id]: "promoted" }));
       await fetchQuestions();
-    } catch {
-      setFeedback({ ...feedback, [id]: "error" });
-    } finally {
-      setPromoting({ ...promoting, [id]: false });
-    }
+    } catch { setFeedback(p => ({ ...p, [id]: "error" })); }
+    finally { setPromoting(p => ({ ...p, [id]: false })); }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this question?")) return;
-    setDeleting({ ...deleting, [id]: true });
+    setDeleting(p => ({ ...p, [id]: true }));
     try {
       await deleteUnanswered(id);
-      setQuestions(questions.filter(q => q.id !== id));
-    } catch {
-      setFeedback({ ...feedback, [id]: "error" });
-    } finally {
-      setDeleting({ ...deleting, [id]: false });
-    }
+      setQuestions(q => q.filter(x => x.id !== id));
+    } catch { setFeedback(p => ({ ...p, [id]: "error" })); }
+    finally { setDeleting(p => ({ ...p, [id]: false })); }
   };
 
   const filtered = questions.filter(q => {
-    if (filter === "all") return q.status !== "added_to_kb";
-    if (filter === "new") return q.status === "new";
+    if (filter === "all")   return q.status !== "added_to_kb";
+    if (filter === "new")   return q.status === "new";
     if (filter === "ready") return q.status === "ready";
-    if (filter === "done") return q.status === "added_to_kb";
+    if (filter === "done")  return q.status === "added_to_kb";
     return true;
   });
 
-  // ── PIN Screen ──────────────────────────────────────────────
+  // ── PIN Screen ────────────────────────────────────────────────
   if (!unlocked) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center
-                      justify-center">
-        <div className="bg-white border border-gray-200 rounded-2xl
-                        p-8 w-full max-w-sm shadow-sm">
-          <div className="flex items-center justify-center mb-6">
-            <div className="w-12 h-12 rounded-full bg-gray-900
-                            flex items-center justify-center">
-              <Lock size={20} className="text-white" />
+      <div style={{
+        minHeight: "100vh", background: C.bg, display: "flex",
+        alignItems: "center", justifyContent: "center",
+        padding: "24px 16px", fontFamily: "'DM Sans', sans-serif",
+      }}>
+        <div style={{
+          position: "fixed", inset: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(245,158,11,0.06) 0%, transparent 60%)",
+        }} />
+
+        <div style={{
+          width: "100%", maxWidth: 380, background: C.card,
+          border: `1px solid ${C.border}`, borderRadius: 24,
+          padding: 32, boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+          position: "relative",
+        }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: 16,
+              background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.2)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="11" width="18" height="11" rx="2" stroke="#f59e0b" strokeWidth="2"/>
+                <path d="M7 11V7a5 5 0 0110 0v4" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
             </div>
           </div>
-          <h1 className="text-center text-lg font-semibold
-                         text-gray-900 mb-1">
-            Prep Dashboard
-          </h1>
-          <p className="text-center text-sm text-gray-400 mb-6">
+          <h1 style={{
+            fontFamily: "'Playfair Display', serif", fontSize: 26,
+            color: C.text, textAlign: "center", margin: "0 0 6px",
+          }}>Prep Dashboard</h1>
+          <p style={{ fontSize: 13, color: C.muted, textAlign: "center", margin: "0 0 28px" }}>
             Enter your PIN to access
           </p>
-          <input
-            type="password"
-            value={pin}
-            onChange={e => setPin(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleUnlock()}
-            placeholder="Enter PIN"
-            className={`w-full border rounded-xl px-4 py-3 text-center
-                       text-lg tracking-widest outline-none
-                       focus:ring-2 focus:ring-gray-200
-                       ${pinError
-                         ? "border-red-300 bg-red-50"
-                         : "border-gray-200"}`}
-          />
-          {pinError && (
-            <p className="text-center text-sm text-red-500 mt-2">
-              Incorrect PIN
-            </p>
-          )}
-          <button
-            onClick={handleUnlock}
-            className="w-full mt-4 bg-gray-900 text-white rounded-xl
-                       py-3 text-sm font-medium hover:bg-gray-700
-                       transition-colors"
-          >
-            Unlock
-          </button>
+
+          <div style={{ position: "relative", marginBottom: 12 }}>
+            <input
+              type={showPin ? "text" : "password"}
+              value={pin}
+              onChange={e => { setPin(e.target.value); setPinError(false); }}
+              onKeyDown={e => e.key === "Enter" && handleUnlock()}
+              placeholder="Enter PIN"
+              autoFocus
+              style={{
+                width: "100%", padding: "12px 44px 12px 16px", borderRadius: 14,
+                background: C.input,
+                border: `1px solid ${pinError ? "#f87171" : focused === -1 ? C.amber : C.border}`,
+                color: C.text, fontSize: 16, textAlign: "center",
+                letterSpacing: "0.2em", outline: "none", fontFamily: "inherit",
+                boxSizing: "border-box",
+              }}
+              onFocus={() => setFocused(-1)}
+              onBlur={() => setFocused(null)}
+            />
+            <button onClick={() => setShowPin(p => !p)} style={{
+              position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+              background: "none", border: "none", cursor: "pointer",
+              color: C.muted, padding: 0, display: "flex",
+            }}>
+              {showPin
+                ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                : <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/></svg>
+              }
+            </button>
+          </div>
+          {pinError && <p style={{ fontSize: 12, color: "#f87171", textAlign: "center", margin: "0 0 12px" }}>Incorrect PIN</p>}
+          <button onClick={handleUnlock} style={{
+            width: "100%", padding: "13px 0", borderRadius: 14, border: "none",
+            background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white",
+            fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+            boxShadow: "0 0 20px rgba(245,158,11,0.25)",
+          }}>Unlock</button>
         </div>
       </div>
     );
   }
 
-  // ── Main Dashboard ───────────────────────────────────────────
+  // ── Main Dashboard ─────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans', sans-serif" }}>
+
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none",
+        background: "radial-gradient(ellipse 80% 40% at 50% 0%, rgba(245,158,11,0.04) 0%, transparent 60%)",
+      }} />
+
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 px-6 py-4
-                         flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gray-900
-                          flex items-center justify-center">
-            <Brain size={18} className="text-white" />
+      <header style={{
+        padding: "18px 24px", display: "flex", alignItems: "center",
+        justifyContent: "space-between", borderBottom: `1px solid ${C.border}`,
+        position: "relative",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-gray-900">
-              Prep Dashboard
-            </h1>
-            <p className="text-xs text-gray-400">
-              {questions.filter(q =>
-                q.status !== "added_to_kb").length} questions to review
+            <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>Prep Dashboard</p>
+            <p style={{ fontSize: 12, color: C.muted, margin: "2px 0 0" }}>
+              {questions.filter(q => q.status !== "added_to_kb").length} questions to review
             </p>
           </div>
         </div>
-        <a href="/chat"
-           className="text-xs text-gray-400 hover:text-gray-600">
-          ← Back to chat
-        </a>
+        <a href="/chat" style={{
+          fontSize: 12, color: C.muted, textDecoration: "none",
+          padding: "6px 12px", borderRadius: 8,
+          border: `1px solid ${C.border}`, background: C.input,
+        }}>← Back to chat</a>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-6">
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px" }}>
+
+        {/* Stats strip */}
+        {!loading && questions.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+            {[
+              { label: "To Review",   value: questions.filter(q => q.status === "new").length,         color: "#818cf8" },
+              { label: "Ready",       value: questions.filter(q => q.status === "ready").length,       color: "#34d399" },
+              { label: "Added to KB", value: questions.filter(q => q.status === "added_to_kb").length, color: C.amber },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 16, padding: "14px 16px", textAlign: "center",
+              }}>
+                <p style={{ fontSize: 11, color: C.muted, margin: "0 0 4px" }}>{label}</p>
+                <p style={{ fontSize: 26, fontWeight: 700, color, margin: 0 }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Filter tabs */}
-        <div className="flex gap-2 mb-6">
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {["all", "new", "ready", "done"].map(f => (
-            <button key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium
-                         transition-colors capitalize
-                         ${filter === f
-                           ? "bg-gray-900 text-white"
-                           : "bg-white border border-gray-200 text-gray-500 hover:border-gray-300"
-                         }`}>
+            <button key={f} onClick={() => setFilter(f)} style={{
+              padding: "6px 16px", borderRadius: 99, fontSize: 12, fontWeight: 500,
+              cursor: "pointer", fontFamily: "inherit",
+              background: filter === f ? "rgba(245,158,11,0.12)" : C.input,
+              border: `1px solid ${filter === f ? "rgba(245,158,11,0.3)" : C.border}`,
+              color: filter === f ? C.amber : C.muted,
+              transition: "all 0.15s",
+            }}>
               {f === "done" ? "added to KB" : f}
             </button>
           ))}
         </div>
 
-        {/* Questions list */}
+        {/* Questions */}
         {loading ? (
-          <div className="text-center text-sm text-gray-400 py-12">
-            Loading...
-          </div>
+          <div style={{ textAlign: "center", padding: "48px 0", fontSize: 14, color: C.muted }}>Loading...</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center text-sm text-gray-400 py-12">
-            No questions in this category 🎉
+          <div style={{ textAlign: "center", padding: "48px 0" }}>
+            <p style={{ fontSize: 28, margin: "0 0 8px" }}>🎉</p>
+            <p style={{ fontSize: 14, color: C.muted, margin: 0 }}>No questions in this category</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {filtered.map(q => (
-              <div key={q.id}
-                className="bg-white border border-gray-200
-                           rounded-2xl overflow-hidden">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {filtered.map(q => {
+              const ps = priorityStyle[q.priority] || priorityStyle.low;
+              const ss = statusStyle[q.status]     || statusStyle.new;
+              const isExpanded = !!expanded[q.id];
 
-                {/* Question header */}
-                <div className="px-5 py-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      {/* Badges */}
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full
-                                         border font-medium
-                                         ${priorityColor[q.priority]}`}>
-                          {q.priority} priority
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full
-                                         font-medium
-                                         ${statusColor[q.status] ?? ""}`}>
-                          {q.status.replace("_", " ")}
-                        </span>
-                        {q.timesAsked > 1 && (
-                          <span className="text-xs px-2 py-0.5 rounded-full
-                                           bg-orange-50 text-orange-600
-                                           font-medium">
-                            asked {q.timesAsked}× 
-                          </span>
-                        )}
-                        {q.company && (
-                          <span className="text-xs px-2 py-0.5 rounded-full
-                                           bg-gray-50 text-gray-500">
-                            {q.company}
-                          </span>
-                        )}
+              return (
+                <div key={q.id} style={{
+                  background: C.card, border: `1px solid ${C.border}`,
+                  borderRadius: 16, overflow: "hidden",
+                  transition: "border-color 0.15s",
+                }}>
+                  {/* Question header */}
+                  <div style={{ padding: "16px 20px" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        {/* Badges */}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                          <span style={{
+                            fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 500,
+                            background: ps.bg, border: `1px solid ${ps.border}`, color: ps.color,
+                          }}>{q.priority} priority</span>
+                          <span style={{
+                            fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 500,
+                            background: ss.bg, border: `1px solid ${ss.border}`, color: ss.color,
+                          }}>{q.status.replace("_", " ")}</span>
+                          {q.timesAsked > 1 && (
+                            <span style={{
+                              fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 500,
+                              background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
+                              color: C.amber,
+                            }}>asked {q.timesAsked}×</span>
+                          )}
+                          {q.company && (
+                            <span style={{
+                              fontSize: 11, padding: "2px 8px", borderRadius: 99,
+                              background: C.input, border: `1px solid ${C.border}`, color: C.subtle,
+                            }}>{q.company}</span>
+                          )}
+                        </div>
+                        <p style={{ fontSize: 14, fontWeight: 500, color: C.text, margin: "0 0 6px", lineHeight: 1.5 }}>
+                          {q.questionText}
+                        </p>
+                        <p style={{ fontSize: 11, color: C.muted, margin: 0 }}>
+                          First asked: {new Date(q.firstAskedAt).toLocaleDateString()}
+                        </p>
                       </div>
 
-                      {/* Question text */}
-                      <p className="text-sm font-medium text-gray-800">
-                        {q.questionText}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        First asked:{" "}
-                        {new Date(q.firstAskedAt)
-                          .toLocaleDateString()}
-                      </p>
-                    </div>
-
-                    {/* Expand / collapse */}
-                    <button
-                      onClick={() => setExpanded({
-                        ...expanded, [q.id]: !expanded[q.id]
-                      })}
-                      className="text-gray-400 hover:text-gray-600
-                                 flex-shrink-0 mt-1">
-                      {expanded[q.id]
-                        ? <ChevronUp size={16} />
-                        : <ChevronDown size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expanded — answer area */}
-                {expanded[q.id] && (
-                  <div className="border-t border-gray-100 px-5 py-4
-                                  bg-gray-50">
-                    <label className="text-xs font-medium text-gray-500
-                                      mb-2 block">
-                      Your answer
-                    </label>
-                    <textarea
-                      value={answers[q.id] ?? ""}
-                      onChange={e => setAnswers({
-                        ...answers, [q.id]: e.target.value
-                      })}
-                      placeholder="Type your answer here..."
-                      rows={4}
-                      className="w-full border border-gray-200 rounded-xl
-                                 px-4 py-3 text-sm text-gray-800
-                                 placeholder-gray-400 resize-none
-                                 focus:outline-none focus:ring-2
-                                 focus:ring-gray-200 bg-white"
-                    />
-
-                    {/* Feedback message */}
-                    {feedback[q.id] && (
-                      <p className={`text-xs mt-1 ${
-                        feedback[q.id] === "error"
-                          ? "text-red-500"
-                          : "text-green-600"
-                      }`}>
-                        {feedback[q.id] === "saved" && "✅ Answer saved"}
-                        {feedback[q.id] === "promoted" &&
-                          "🚀 Added to knowledge base!"}
-                        {feedback[q.id] === "error" && "❌ Something went wrong"}
-                      </p>
-                    )}
-
-                    {/* Action buttons */}
-                    <div className="flex gap-2 mt-3">
-                      {/* Save */}
-                      <button
-                        onClick={() => handleSave(q.id)}
-                        disabled={saving[q.id] ||
-                                  !answers[q.id]?.trim()}
-                        className="flex items-center gap-1.5 px-4 py-2
-                                   bg-gray-900 text-white text-xs
-                                   rounded-xl hover:bg-gray-700
-                                   disabled:opacity-40 transition-colors">
-                        <CheckCircle size={13} />
-                        {saving[q.id] ? "Saving..." : "Save Answer"}
+                      <button onClick={() => setExpanded(p => ({ ...p, [q.id]: !p[q.id] }))}
+                        style={{
+                          width: 28, height: 28, borderRadius: 8, border: "none",
+                          cursor: "pointer", flexShrink: 0, marginTop: 2,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          background: isExpanded ? "rgba(245,158,11,0.1)" : C.input,
+                          color: isExpanded ? C.amber : C.muted,
+                        }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                          <polyline points={isExpanded ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}
+                                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                        </svg>
                       </button>
+                    </div>
+                  </div>
 
-                      {/* Promote */}
-                      {q.status === "ready" && (
-                        <button
-                          onClick={() => handlePromote(q.id)}
-                          disabled={promoting[q.id]}
-                          className="flex items-center gap-1.5 px-4 py-2
-                                     bg-green-600 text-white text-xs
-                                     rounded-xl hover:bg-green-700
-                                     disabled:opacity-40 transition-colors">
-                          <BookOpen size={13} />
-                          {promoting[q.id]
-                            ? "Adding to KB..."
-                            : "Add to KB"}
-                        </button>
+                  {/* Expanded answer area */}
+                  {isExpanded && (
+                    <div style={{
+                      padding: "16px 20px",
+                      background: C.input,
+                      borderTop: `1px solid ${C.border}`,
+                    }}>
+                      <label style={{ fontSize: 12, fontWeight: 500, color: C.subtle, display: "block", marginBottom: 8 }}>
+                        Your answer
+                      </label>
+                      <textarea
+                        value={answers[q.id] ?? ""}
+                        onChange={e => setAnswers(p => ({ ...p, [q.id]: e.target.value }))}
+                        placeholder="Type your answer here..."
+                        rows={4}
+                        style={{
+                          width: "100%", padding: "12px 14px", borderRadius: 12,
+                          background: C.card, border: `1px solid ${focused === q.id ? C.amber : C.border}`,
+                          color: C.text, fontSize: 13, resize: "none",
+                          outline: "none", fontFamily: "inherit", boxSizing: "border-box",
+                          transition: "border-color 0.2s",
+                        }}
+                        onFocus={() => setFocused(q.id)}
+                        onBlur={() => setFocused(null)}
+                      />
+
+                      {feedback[q.id] && (
+                        <p style={{
+                          fontSize: 12, margin: "6px 0 0",
+                          color: feedback[q.id] === "error" ? "#f87171" : "#34d399",
+                        }}>
+                          {feedback[q.id] === "saved"    && "✅ Answer saved"}
+                          {feedback[q.id] === "promoted" && "🚀 Added to knowledge base!"}
+                          {feedback[q.id] === "error"    && "❌ Something went wrong"}
+                        </p>
                       )}
 
-                      {/* Delete */}
-                      <button
-                        onClick={() => handleDelete(q.id)}
-                        disabled={deleting[q.id]}
-                        className="flex items-center gap-1.5 px-4 py-2
-                                   border border-red-200 text-red-500
-                                   text-xs rounded-xl hover:bg-red-50
-                                   disabled:opacity-40 transition-colors
-                                   ml-auto">
-                        <Trash2 size={13} />
-                        {deleting[q.id] ? "Deleting..." : "Delete"}
-                      </button>
+                      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                        {/* Save */}
+                        <button onClick={() => handleSave(q.id)}
+                          disabled={saving[q.id] || !answers[q.id]?.trim()}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+                            background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white",
+                            fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                            opacity: (saving[q.id] || !answers[q.id]?.trim()) ? 0.4 : 1,
+                          }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                            <polyline points="20 6 9 17 4 12" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+                          </svg>
+                          {saving[q.id] ? "Saving..." : "Save Answer"}
+                        </button>
+
+                        {/* Promote */}
+                        {q.status === "ready" && (
+                          <button onClick={() => handlePromote(q.id)}
+                            disabled={promoting[q.id]}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 6,
+                              padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+                              background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.25)",
+                              color: "#34d399", fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                              opacity: promoting[q.id] ? 0.4 : 1,
+                            } as React.CSSProperties}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                              <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            {promoting[q.id] ? "Adding..." : "Add to KB"}
+                          </button>
+                        )}
+
+                        {/* Delete */}
+                        <button onClick={() => handleDelete(q.id)}
+                          disabled={deleting[q.id]}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "8px 16px", borderRadius: 10, cursor: "pointer",
+                            background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.15)",
+                            color: "#f87171", fontSize: 12, fontWeight: 500, fontFamily: "inherit",
+                            opacity: deleting[q.id] ? 0.4 : 1, marginLeft: "auto",
+                          }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                            <polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          </svg>
+                          {deleting[q.id] ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

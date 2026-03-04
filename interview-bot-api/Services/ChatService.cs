@@ -113,7 +113,7 @@ if (IsGreeting(request.Message))
     // ================================================================
     // HIGH/MEDIUM CONFIDENCE — answer from knowledge base
     // ================================================================
-    private async Task<ChatResponse> HandleKnowledgeBaseAnswerAsync(
+   private async Task<ChatResponse> HandleKnowledgeBaseAnswerAsync(
     ChatRequest request,
     List<SearchResult> results,
     double topScore,
@@ -121,63 +121,84 @@ if (IsGreeting(request.Message))
 {
     var questionLower = request.Message.ToLower();
 
-    // For career questions → fetch ALL career chunks directly
- var isCareerQuestion = new[] {
-    "career", "journey", "work history", "walk me through",
-    "companies you worked", "previous companies"
-}.Any(k => questionLower.Contains(k));
+    var isCareerQuestion = new[] {
+        "career", "journey", "work history", "walk me through",
+        "companies you worked", "previous companies"
+    }.Any(k => questionLower.Contains(k));
 
-// ADD THIS:
-var isChallengeQuestion = new[] {
-    "challenge", "difficult", "tough", "obstacle",
-    "hard situation", "problem you faced", "conflict"
-}.Any(k => questionLower.Contains(k));
+    var isChallengeQuestion = new[] {
+        "challenge", "difficult", "tough", "obstacle",
+        "hard situation", "problem you faced", "conflict"
+    }.Any(k => questionLower.Contains(k));
 
-var isLeadershipQuestion = new[] {
-    "led a team", "leadership", "mentored", "managed a team",
-    "led people", "team lead"
-}.Any(k => questionLower.Contains(k));
+    var isLeadershipQuestion = new[] {
+        "led a team", "leadership", "mentored", "managed a team",
+        "led people", "team lead"
+    }.Any(k => questionLower.Contains(k));
 
-List<SearchResult> contextChunks;
+    var roundContext = request.RoundType switch {
+        "technical"     => "This is a TECHNICAL round. Focus on code, architecture, patterns, and specific technical implementations.",
+        "hr"            => "This is an HR round. Focus on culture fit, motivations, teamwork, and career goals.",
+        "system_design" => "This is a SYSTEM DESIGN round. Focus on scalability, infrastructure choices, trade-offs, and system architecture.",
+        "behavioural"   => "This is a BEHAVIOURAL round. Use STAR method (Situation, Task, Action, Result) for answers.",
+        _               => "This is a general interview."
+    };
 
-if (isCareerQuestion)
-{
-    contextChunks = await GetAllChunksFromFileAsync("career-journey.md");
-    if (contextChunks.Count == 0)
-        contextChunks = results.Take(5).ToList();
-}
-else if (isChallengeQuestion)
-{
-    contextChunks = await GetAllChunksFromFileAsync("challenges.md");
-    if (contextChunks.Count == 0)
-        contextChunks = results.Take(3).ToList();
-}
-else if (isLeadershipQuestion)
-{
-    contextChunks = await GetAllChunksFromFileAsync("leadership.md");
-    if (contextChunks.Count == 0)
-        contextChunks = results.Take(3).ToList();
-}
-else
-{
-    var filtered = results
-        .Where(r => r.Similarity >= topScore - 0.08)
-        .Take(3)
-        .ToList();
+    List<SearchResult> contextChunks;
 
-    var topFile = filtered.First().SourceFile;
-    var sameFile = filtered
-        .Where(r => r.SourceFile == topFile)
-        .ToList();
+    if (isCareerQuestion)
+    {
+        contextChunks = await GetAllChunksFromFileAsync("career-journey.md");
+        if (contextChunks.Count == 0)
+            contextChunks = results.Take(5).ToList();
+    }
+    else if (isChallengeQuestion)
+    {
+        contextChunks = await GetAllChunksFromFileAsync("challenges.md");
+        if (contextChunks.Count == 0)
+            contextChunks = results.Take(3).ToList();
+    }
+    else if (isLeadershipQuestion)
+    {
+        contextChunks = await GetAllChunksFromFileAsync("leadership.md");
+        if (contextChunks.Count == 0)
+            contextChunks = results.Take(3).ToList();
+    }
+    else
+    {
+        var filtered = results
+            .Where(r => r.Similarity >= topScore - 0.08)
+            .Take(3)
+            .ToList();
 
-    contextChunks = sameFile.Count >= 1 ? sameFile : filtered;
-}
+        var topFile = filtered.First().SourceFile;
+        var sameFile = filtered
+            .Where(r => r.SourceFile == topFile)
+            .ToList();
+
+        contextChunks = sameFile.Count >= 1 ? sameFile : filtered;
+    }
+
     var context = string.Join("\n\n---\n\n",
         contextChunks.Select(r =>
             $"[From {r.SourceFile} — {r.SectionTitle}]\n{r.ChunkText}"));
 
-    var prompt = $@"You are Sanath Kumar J S, a Lead Software Engineer
+var historyText = "";
+if (request.History != null && request.History.Count > 1)
+{
+    // exclude the last message (that's the current question being asked)
+    var priorTurns = request.History.SkipLast(1).ToList();
+    var lines = priorTurns.Select(t =>
+        t.Role == "interviewer"
+            ? $"Interviewer: {t.Text}"
+            : $"Sanath: {t.Text}"
+    );
+    historyText = string.Join("\n", lines);
+
+var prompt = $@"You are Sanath Kumar J S, a Lead Software Engineer
 based in Bengaluru with 10+ years of .NET experience.
+
+INTERVIEW CONTEXT: {roundContext}
 
 CRITICAL RULES:
 1. Answer in FIRST PERSON as Sanath. You ARE Sanath.
@@ -187,6 +208,11 @@ CRITICAL RULES:
 5. NEVER add information not asked for in the question.
 6. Be confident and natural like a real interview.
 7. Do not start your answer with 'I'.
+8. Keep answers concise — 3-5 sentences unless detail is specifically asked for.
+9. If the question is a follow-up or refers to something previously said,
+   use the CONVERSATION HISTORY to understand the context and respond accordingly.
+   Short replies like 'yes', 'tell me more', 'elaborate' should continue
+   the previous topic naturally.
 
 FORMATTING RULES — apply ONLY if the question matches:
 - If question asks about career journey, work history,
@@ -205,16 +231,46 @@ FORMATTING RULES — apply ONLY if the question matches:
 - If question is an introduction:
   → 3-4 sentences max, high level only
 
-CONTEXT:
+{(string.IsNullOrEmpty(historyText) ? "" : $@"CONVERSATION HISTORY (most recent exchanges):
+{historyText}
+
+")}CONTEXT FROM KNOWLEDGE BASE:
 {context}
 
 QUESTION: {request.Message}
 
-ANSWER (answer ONLY what was asked, use ONLY context facts):";
+ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue from the conversation history naturally):";
 
+    // ── Get the answer first ──────────────────────────────────
     var answer = _llmProvider == "groq"
         ? await CallGroqAsync(prompt)
         : await CallOllamaAsync(prompt);
+
+    // ── Generate follow-up questions ──────────────────────────
+    List<string> followUps = new();
+    try
+    {
+        var followUpPrompt = $@"Based on this interview Q&A, suggest exactly 2 natural follow-up questions
+an interviewer might ask next. Return ONLY a JSON array of 2 strings, nothing else.
+Example: [""Can you elaborate on X?"", ""How did you handle Y?""]
+
+Question: {request.Message}
+Answer: {answer}
+
+Follow-ups (JSON array only):";
+
+        var followUpRaw = _llmProvider == "groq"
+            ? await CallGroqAsync(followUpPrompt)
+            : await CallOllamaAsync(followUpPrompt);
+
+        var cleaned = followUpRaw.Trim()
+            .TrimStart('`').TrimEnd('`')
+            .Replace("json", "").Trim();
+
+        followUps = System.Text.Json.JsonSerializer
+            .Deserialize<List<string>>(cleaned) ?? new();
+    }
+    catch { /* follow-ups are non-critical */ }
 
     return new ChatResponse
     {
@@ -223,6 +279,7 @@ ANSWER (answer ONLY what was asked, use ONLY context facts):";
         ConfidenceScore = topScore,
         UsedFallback = false,
         SessionId = request.SessionId,
+        FollowUps = followUps,
         Sources = contextChunks.Take(3).Select(r => new SourceChunk
         {
             SourceFile = r.SourceFile,
@@ -1005,12 +1062,6 @@ public async Task<object?> GetTranscriptByIdAsync(int sessionId)
 // 1. ADD THIS TO Models.cs — new request model
 // ================================================================
 
-public class UpdateSessionDetailsRequest
-{
-    public string? InterviewerName { get; set; }
-    public string? CompanyName     { get; set; }
-}
-
 
 // ================================================================
 // 2. ADD THESE TWO METHODS TO ChatService.cs
@@ -1077,6 +1128,29 @@ private static string GetGreetingResponse(string message)
 
     // Default hi/hello/hey
     return "Hello! Great to have you here. I'm Sanath's interview assistant — feel free to ask me anything about his experience, skills, or background. What would you like to start with?";
+}
+
+// Save was_helpful on a message by session code + sequence number
+public async Task SaveMessageFeedbackAsync(
+    string sessionCode, int sequenceNumber, bool helpful)
+{
+    var dataSourceBuilder = new NpgsqlDataSourceBuilder(_connectionString);
+    dataSourceBuilder.UseVector();
+    await using var dataSource = dataSourceBuilder.Build();
+    await using var conn = await dataSource.OpenConnectionAsync();
+
+    await using var cmd = new NpgsqlCommand(@"
+        UPDATE chat_messages
+        SET was_helpful = @helpful
+        WHERE session_id = (
+            SELECT id FROM interview_sessions WHERE session_code = @code
+        )
+        AND sequence_number = @seq", conn);
+
+    cmd.Parameters.AddWithValue("helpful", helpful);
+    cmd.Parameters.AddWithValue("code", sessionCode);
+    cmd.Parameters.AddWithValue("seq", sequenceNumber);
+    await cmd.ExecuteNonQueryAsync();
 }
 
 // POST end session — mark as completed + set ended_at

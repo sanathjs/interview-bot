@@ -198,4 +198,24 @@ public async Task<IActionResult> EndSession(string sessionCode)
         return StatusCode(500, new { error = "Something went wrong" });
     }
 }
+
+// PATCH /api/messages/{sequenceNumber}/feedback
+// Called when interviewer clicks 👍 or 👎
+[HttpPatch("messages/{sequenceNumber}/feedback")]
+public async Task<IActionResult> MessageFeedback(
+    int sequenceNumber,
+    [FromBody] MessageFeedbackRequest request)
+{
+    try
+    {
+        await _chat.SaveMessageFeedbackAsync(
+            request.SessionCode, sequenceNumber, request.Helpful);
+        return Ok(new { message = "Feedback saved ✅" });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Feedback error");
+        return StatusCode(500, new { error = "Something went wrong" });
+    }
+}
 }

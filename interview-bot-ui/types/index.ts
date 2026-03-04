@@ -2,9 +2,10 @@ export interface Message {
   id: string;
   role: "interviewer" | "bot";
   text: string;
-  answerSource?: "knowledge_base" | "unanswered" | "fallback_ai";
+  answerSource?: "knowledge_base" | "unanswered" | "fallback_ai" | "greeting";
   confidenceScore?: number;
   sources?: SourceChunk[];
+  followUps?: string[];
   timestamp: string;
 }
 
@@ -14,10 +15,17 @@ export interface SourceChunk {
   similarity: number;
 }
 
+export interface ConversationTurn {
+  role: "interviewer" | "bot";
+  text: string;
+}
+
 export interface ChatRequest {
   sessionId: string;
   message: string;
   useFallback?: boolean;
+  roundType?: string;
+  history?: ConversationTurn[];   // ← last N turns for context
 }
 
 export interface ChatResponse {
@@ -25,6 +33,7 @@ export interface ChatResponse {
   answerSource: string;
   confidenceScore: number;
   sources: SourceChunk[];
+  followUps?: string[];
   usedFallback: boolean;
   sessionId: string;
 }

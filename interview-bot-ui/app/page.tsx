@@ -2,27 +2,46 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, Lock, User, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 const PREP_PIN = process.env.NEXT_PUBLIC_PREP_PIN || "1234";
+
+const ROUND_TYPES = [
+  { value: "technical",     label: "Technical",    desc: "Coding, architecture, problem-solving" },
+  { value: "hr",            label: "HR",            desc: "Culture fit, background, motivations" },
+  { value: "system_design", label: "System Design", desc: "Scalability, infrastructure, design" },
+  { value: "behavioural",   label: "Behavioural",   desc: "Situational, STAR-based questions" },
+  { value: "general",       label: "General",       desc: "Mixed or exploratory interview" },
+];
+
+const C = {
+  bg:      "#0d0d0f",
+  card:    "#1c1c21",
+  border:  "#32323c",
+  input:   "#141417",
+  text:    "#e8e8ef",
+  muted:   "#6b6b7d",
+  subtle:  "#9292a4",
+  amber:   "#f59e0b",
+};
 
 export default function HomePage() {
   const router = useRouter();
   const [step, setStep] = useState<"choose" | "pin" | "interviewer">("choose");
-
-  // PIN flow
-  const [pin, setPin] = useState("");
+  const [pin, setPin]           = useState("");
   const [pinError, setPinError] = useState("");
-  const [showPin, setShowPin] = useState(false);
-
-  // Interviewer flow
+  const [showPin, setShowPin]   = useState(false);
   const [interviewerName, setInterviewerName] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const [interviewerError, setInterviewerError] = useState("");
+  const [companyName, setCompanyName]         = useState("");
+  const [roundType, setRoundType]             = useState("general");
+  const [formError, setFormError]             = useState("");
 
   const handlePinSubmit = () => {
     if (pin === PREP_PIN) {
       localStorage.setItem("ib_role", "admin");
+          localStorage.removeItem("ib_interviewer_name"); 
+    localStorage.removeItem("ib_company_name");     
+    localStorage.removeItem("ib_round_type");       
       router.push("/chat");
     } else {
       setPinError("Incorrect PIN. Try again.");
@@ -31,185 +50,253 @@ export default function HomePage() {
   };
 
   const handleInterviewerSubmit = () => {
-    if (!interviewerName.trim()) {
-      setInterviewerError("Please enter your name.");
-      return;
-    }
-    if (!companyName.trim()) {
-      setInterviewerError("Please enter your company name.");
-      return;
-    }
+    if (!interviewerName.trim()) { setFormError("Please enter your name."); return; }
+    if (!companyName.trim())     { setFormError("Please enter your company."); return; }
     localStorage.setItem("ib_role", "interviewer");
     localStorage.setItem("ib_interviewer_name", interviewerName.trim());
     localStorage.setItem("ib_company_name", companyName.trim());
+    localStorage.setItem("ib_round_type", roundType);
     router.push("/chat");
   };
 
+  const inputStyle: React.CSSProperties = {
+    background: C.input, border: `1px solid ${C.border}`, color: C.text,
+    borderRadius: 16, padding: "12px 16px", fontSize: 14, width: "100%",
+    outline: "none", fontFamily: "inherit", boxSizing: "border-box",
+  };
+
+  const amberBtn: React.CSSProperties = {
+    background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white",
+    border: "none", borderRadius: 16, padding: "13px 0", width: "100%",
+    fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+    boxShadow: "0 0 20px rgba(245,158,11,0.25)",
+  };
+
+  const backBtn: React.CSSProperties = {
+    background: "none", border: "none", color: C.muted, fontSize: 12,
+    cursor: "pointer", padding: 0, marginBottom: 24, fontFamily: "inherit",
+  };
+
+  const label: React.CSSProperties = {
+    fontSize: 12, fontWeight: 500, color: C.subtle,
+    marginBottom: 8, display: "block",
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+    <div style={{
+      minHeight: "100vh", background: C.bg, display: "flex",
+      flexDirection: "column", alignItems: "center", justifyContent: "center",
+      padding: "24px 16px", fontFamily: "'DM Sans', sans-serif",
+    }}>
+
+      {/* Ambient glow */}
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none",
+        background: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(245,158,11,0.08) 0%, transparent 70%)",
+      }} />
 
       {/* Logo */}
-      <div className="flex items-center gap-3 mb-10">
-        <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center">
-          <Bot size={20} className="text-white" />
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 48, position: "relative" }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 14,
+          background: "linear-gradient(135deg, #f59e0b, #d97706)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 0 24px rgba(245,158,11,0.35)",
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="white"/>
+          </svg>
         </div>
-        <span className="text-base font-semibold text-gray-900">Interview Bot</span>
+        <div>
+          <p style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.2,
+                      fontFamily: "'Playfair Display', serif" }}>
+            Interview Bot
+          </p>
+          <p style={{ fontSize: 12, color: C.muted, margin: 0, marginTop: 2 }}>Sanath Kumar J S</p>
+        </div>
       </div>
 
-      <div className="w-full max-w-sm">
+      {/* Card */}
+      <div style={{
+        width: "100%", maxWidth: 420, background: C.card,
+        border: `1px solid ${C.border}`, borderRadius: 24, padding: 32,
+        boxShadow: "0 24px 60px rgba(0,0,0,0.5)", position: "relative",
+      }}>
 
-        {/* ── STEP: CHOOSE ROLE ── */}
+        {/* ── CHOOSE ROLE ── */}
         {step === "choose" && (
-          <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm">
-            <h1 className="text-lg font-semibold text-gray-900 mb-1">Welcome</h1>
-            <p className="text-sm text-gray-400 mb-8">Who are you today?</p>
+          <>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28,
+                         color: C.text, margin: "0 0 6px" }}>Welcome</h1>
+            <p style={{ fontSize: 14, color: C.muted, margin: "0 0 28px" }}>Who are you today?</p>
 
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => setStep("interviewer")}
-                className="group flex items-center gap-4 px-5 py-4 rounded-2xl
-                           bg-gray-900 text-white hover:bg-gray-800
-                           transition-all hover:scale-[1.01]">
-                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
-                  <User size={17} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <button onClick={() => setStep("interviewer")} style={{
+                display: "flex", alignItems: "center", gap: 16,
+                padding: "16px 20px", borderRadius: 16, border: "none",
+                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                cursor: "pointer", textAlign: "left", width: "100%",
+                boxShadow: "0 0 24px rgba(245,158,11,0.2)",
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                  background: "rgba(255,255,255,0.15)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="8" r="4" stroke="white" strokeWidth="2"/>
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
                 </div>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-semibold">I'm an Interviewer</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Start a new interview session</p>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "white", margin: 0 }}>I'm an Interviewer</p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", margin: "3px 0 0" }}>Start a new interview session</p>
                 </div>
-                <ChevronRight size={15} className="opacity-40 group-hover:opacity-70 transition-opacity" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
               </button>
 
-              <button
-                onClick={() => setStep("pin")}
-                className="group flex items-center gap-4 px-5 py-4 rounded-2xl
-                           bg-white border border-gray-200 text-gray-900
-                           hover:border-gray-300 hover:shadow-sm
-                           transition-all hover:scale-[1.01]">
-                <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-                  <Lock size={17} className="text-gray-600" />
+              <button onClick={() => setStep("pin")} style={{
+                display: "flex", alignItems: "center", gap: 16,
+                padding: "16px 20px", borderRadius: 16,
+                border: `1px solid ${C.border}`, background: C.input,
+                cursor: "pointer", textAlign: "left", width: "100%",
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                  background: C.card,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="11" width="18" height="11" rx="2" stroke={C.subtle} strokeWidth="2"/>
+                    <path d="M7 11V7a5 5 0 0110 0v4" stroke={C.subtle} strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
                 </div>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-semibold">I'm Sanath</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Admin access with PIN</p>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>I'm Sanath</p>
+                  <p style={{ fontSize: 12, color: C.muted, margin: "3px 0 0" }}>Admin access with PIN</p>
                 </div>
-                <ChevronRight size={15} className="opacity-40 group-hover:opacity-70 transition-opacity" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18l6-6-6-6" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/>
+                </svg>
               </button>
             </div>
-          </div>
+          </>
         )}
 
-        {/* ── STEP: PIN ── */}
+        {/* ── PIN ── */}
         {step === "pin" && (
-          <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm">
-            <button
-              onClick={() => { setStep("choose"); setPin(""); setPinError(""); }}
-              className="text-xs text-gray-400 hover:text-gray-600 mb-6 flex items-center gap-1">
-              ← Back
-            </button>
-            <h1 className="text-lg font-semibold text-gray-900 mb-1">Admin Access</h1>
-            <p className="text-sm text-gray-400 mb-8">Enter your PIN to continue</p>
+          <>
+            <button onClick={() => { setStep("choose"); setPin(""); setPinError(""); }}
+              style={backBtn}>← Back</button>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28,
+                         color: C.text, margin: "0 0 6px" }}>Admin Access</h1>
+            <p style={{ fontSize: 14, color: C.muted, margin: "0 0 28px" }}>Enter your PIN to continue</p>
 
-            <div className="flex flex-col gap-4">
-              <div className="relative">
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ position: "relative" }}>
                 <input
                   type={showPin ? "text" : "password"}
                   value={pin}
                   onChange={e => { setPin(e.target.value); setPinError(""); }}
                   onKeyDown={e => e.key === "Enter" && handlePinSubmit()}
                   placeholder="Enter PIN"
-                  className="w-full px-4 py-3 pr-10 rounded-2xl border border-gray-200
-                             text-sm text-gray-900 placeholder-gray-400
-                             focus:outline-none focus:border-gray-400 transition-colors"
+                  style={{ ...inputStyle, paddingRight: 44 }}
                   autoFocus
                 />
-                <button
-                  onClick={() => setShowPin(!showPin)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showPin ? <EyeOff size={15} /> : <Eye size={15} />}
+                <button onClick={() => setShowPin(!showPin)} style={{
+                  position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                  background: "none", border: "none", cursor: "pointer",
+                  color: C.muted, padding: 0, display: "flex",
+                }}>
+                  {showPin ? <EyeOff size={15} color={C.muted} /> : <Eye size={15} color={C.muted} />}
                 </button>
               </div>
-
-              {pinError && (
-                <p className="text-xs text-red-500">{pinError}</p>
-              )}
-
-              <button
-                onClick={handlePinSubmit}
-                disabled={!pin}
-                className="w-full py-3 rounded-2xl bg-gray-900 text-white text-sm font-medium
-                           hover:bg-gray-800 transition-colors disabled:opacity-40
-                           disabled:cursor-not-allowed">
+              {pinError && <p style={{ fontSize: 12, color: "#f87171", margin: 0 }}>{pinError}</p>}
+              <button onClick={handlePinSubmit} disabled={!pin}
+                style={{ ...amberBtn, opacity: !pin ? 0.4 : 1, cursor: !pin ? "not-allowed" : "pointer" }}>
                 Continue
               </button>
             </div>
-          </div>
+          </>
         )}
 
-        {/* ── STEP: INTERVIEWER DETAILS ── */}
+        {/* ── INTERVIEWER DETAILS ── */}
         {step === "interviewer" && (
-          <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm">
-            <button
-              onClick={() => { setStep("choose"); setInterviewerError(""); }}
-              className="text-xs text-gray-400 hover:text-gray-600 mb-6 flex items-center gap-1">
-              ← Back
-            </button>
-            <h1 className="text-lg font-semibold text-gray-900 mb-1">Before we start</h1>
-            <p className="text-sm text-gray-400 mb-8">Tell us a bit about yourself</p>
+          <>
+            <button onClick={() => { setStep("choose"); setFormError(""); }}
+              style={backBtn}>← Back</button>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28,
+                         color: C.text, margin: "0 0 6px" }}>Before we start</h1>
+            <p style={{ fontSize: 14, color: C.muted, margin: "0 0 28px" }}>
+              A few quick details to set up your session
+            </p>
 
-            <div className="flex flex-col gap-4">
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1.5 block">
-                  Your Name
-                </label>
-                <input
-                  type="text"
-                  value={interviewerName}
-                  onChange={e => { setInterviewerName(e.target.value); setInterviewerError(""); }}
+                <label style={label}>Your Name</label>
+                <input type="text" value={interviewerName}
+                  onChange={e => { setInterviewerName(e.target.value); setFormError(""); }}
                   onKeyDown={e => e.key === "Enter" && handleInterviewerSubmit()}
-                  placeholder="e.g. Priya Sharma"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200
-                             text-sm text-gray-900 placeholder-gray-400
-                             focus:outline-none focus:border-gray-400 transition-colors"
-                  autoFocus
-                />
+                  placeholder="e.g. Priya Sharma" style={inputStyle} autoFocus />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1.5 block">
-                  Company
-                </label>
-                <input
-                  type="text"
-                  value={companyName}
-                  onChange={e => { setCompanyName(e.target.value); setInterviewerError(""); }}
+                <label style={label}>Company</label>
+                <input type="text" value={companyName}
+                  onChange={e => { setCompanyName(e.target.value); setFormError(""); }}
                   onKeyDown={e => e.key === "Enter" && handleInterviewerSubmit()}
-                  placeholder="e.g. Google"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200
-                             text-sm text-gray-900 placeholder-gray-400
-                             focus:outline-none focus:border-gray-400 transition-colors"
-                />
+                  placeholder="e.g. Google" style={inputStyle} />
               </div>
 
-              {interviewerError && (
-                <p className="text-xs text-red-500">{interviewerError}</p>
-              )}
+              <div>
+                <label style={label}>Round Type</label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {ROUND_TYPES.map(r => (
+                    <button key={r.value} onClick={() => setRoundType(r.value)} style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      padding: "11px 14px", borderRadius: 12, cursor: "pointer",
+                      textAlign: "left", width: "100%", fontFamily: "inherit",
+                      background: roundType === r.value ? "rgba(245,158,11,0.08)" : C.input,
+                      border: `1px solid ${roundType === r.value ? C.amber : C.border}`,
+                    }}>
+                      <div style={{
+                        width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
+                        border: `2px solid ${roundType === r.value ? C.amber : C.border}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {roundType === r.value && (
+                          <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.amber }} />
+                        )}
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 500, color: C.text, margin: 0 }}>{r.label}</p>
+                        <p style={{ fontSize: 11, color: C.muted, margin: "2px 0 0" }}>{r.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-              <button
-                onClick={handleInterviewerSubmit}
+              {formError && <p style={{ fontSize: 12, color: "#f87171", margin: 0 }}>{formError}</p>}
+
+              <button onClick={handleInterviewerSubmit}
                 disabled={!interviewerName.trim() || !companyName.trim()}
-                className="w-full py-3 rounded-2xl bg-gray-900 text-white text-sm font-medium
-                           hover:bg-gray-800 transition-colors disabled:opacity-40
-                           disabled:cursor-not-allowed mt-2">
-                Start Interview
+                style={{
+                  ...amberBtn,
+                  opacity: (!interviewerName.trim() || !companyName.trim()) ? 0.4 : 1,
+                  cursor: (!interviewerName.trim() || !companyName.trim()) ? "not-allowed" : "pointer",
+                  marginTop: 4,
+                }}>
+                Start Interview →
               </button>
             </div>
-          </div>
+          </>
         )}
-
       </div>
 
-      <p className="text-xs text-gray-300 mt-10">
+      <p style={{ fontSize: 12, color: "#32323c", marginTop: 40 }}>
         Built by Sanath Kumar J S · {new Date().getFullYear()}
       </p>
     </div>
