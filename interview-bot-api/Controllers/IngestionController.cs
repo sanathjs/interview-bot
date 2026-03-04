@@ -24,8 +24,8 @@ public class IngestionController : ControllerBase
             return Unauthorized(new { error = "Invalid admin key" });
 
         var kbPath = Path.GetFullPath(
-            Path.Combine(Directory.GetCurrentDirectory(),
-            "..", "knowledge-base"));
+                     Path.Combine(Directory.GetCurrentDirectory(),
+                        "knowledge-base"));
 
         if (!Directory.Exists(kbPath))
             return BadRequest(new

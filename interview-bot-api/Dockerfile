@@ -15,4 +15,6 @@ RUN dotnet publish -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Copy knowledge-base into the image
+COPY ["knowledge-base", "/app/knowledge-base"]
 ENTRYPOINT ["dotnet", "interview-bot-api.dll"]
