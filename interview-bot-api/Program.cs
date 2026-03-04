@@ -12,7 +12,7 @@ builder.Services.AddSingleton<ChatService>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("http://localhost:3000","https://interview-bot-delta-flax.vercel.app","https://sanathjs-interview-bot-sanathjs-projects.vercel.app")
               .AllowAnyMethod()
               .AllowAnyHeader());
 });
