@@ -16,13 +16,20 @@ public class IngestionService
     private readonly string _ollamaBaseUrl;
     private readonly string _embeddingModel;
 
-    public IngestionService(IConfiguration config, ILogger<IngestionService> logger)
+    private readonly EmbeddingService _embedding;
+
+   public IngestionService(
+    IConfiguration config,
+    ILogger<IngestionService> logger,
+    EmbeddingService embedding)
     {
-        _logger = logger;
-        _connectionString = config["DATABASE_URL"]!;
-        _ollamaBaseUrl = config["Ollama:BaseUrl"] ?? "http://localhost:11434";
-        _embeddingModel = config["Ollama:EmbeddingModel"] ?? "nomic-embed-text";
-        _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+    _logger = logger;
+    _connectionString = config["DATABASE_URL"]!;
+    _embedding = embedding;
+    _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+    // DELETE these two lines:
+    // _ollamaBaseUrl = config["Ollama:BaseUrl"] ?? "http://localhost:11434";
+    // _embeddingModel = config["Ollama:EmbeddingModel"] ?? "nomic-embed-text";
     }
 
     public async Task<IngestionResult> IngestDirectoryAsync(string directoryPath)
@@ -46,7 +53,7 @@ public class IngestionService
 
                 foreach (var chunk in chunks)
                 {
-                    var embedding = await GetEmbeddingAsync(chunk.ChunkText);
+                    var embedding = await _embedding.GetEmbeddingAsync(chunk.ChunkText);
 
                     if (embedding.Length == 0)
                     {
@@ -288,31 +295,6 @@ if (file.Contains("ai-rag") || h.Contains("rag") || h.Contains("pipeline"))
 
     return new List<string>();
 }
-
-    private async Task<float[]> GetEmbeddingAsync(string text)
-    {
-        try
-        {
-            var request = new { model = _embeddingModel, prompt = text };
-
-            var response = await _httpClient.PostAsJsonAsync(
-                $"{_ollamaBaseUrl}/api/embeddings", request);
-
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-            var embeddingArray = json.GetProperty("embedding");
-
-            return embeddingArray.EnumerateArray()
-                .Select(e => (float)e.GetDouble())
-                .ToArray();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Embedding failed");
-            return Array.Empty<float>();
-        }
-    }
 
     private async Task SaveChunkAsync(KnowledgeChunk chunk, float[] embedding)
     {

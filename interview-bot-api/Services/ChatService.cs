@@ -16,22 +16,26 @@ public class ChatService
     private readonly string _connectionString;
     private readonly HttpClient _httpClient;
     private readonly ILogger<ChatService> _logger;
+    private readonly EmbeddingService _embedding;
     private readonly string _ollamaBaseUrl;
     private readonly string _chatModel;
 
     public ChatService(
-        KnowledgeSearchService search,
-        IConfiguration config,
-        ILogger<ChatService> logger)
+    KnowledgeSearchService search,
+    IConfiguration config,
+    ILogger<ChatService> logger,
+    EmbeddingService embedding)
     {
         _search = search;
         _logger = logger;
         _connectionString = config["DATABASE_URL"]!;
-        _ollamaBaseUrl = config["Ollama:BaseUrl"] ?? "http://localhost:11434";
-        _chatModel = config["Ollama:ChatModel"] ?? "llama3.2";
+        _embedding = embedding;
         _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(180) };
         _config = config;
-        _llmProvider = config["LlmProvider"] ?? "ollama";
+        _llmProvider = config["LlmProvider"] ?? "groq";
+        // DELETE these two lines:
+        // _ollamaBaseUrl = config["Ollama:BaseUrl"] ?? "http://localhost:11434";
+        // _chatModel = config["Ollama:ChatModel"] ?? "llama3.2";
     }
 
     // ================================================================
@@ -680,7 +684,7 @@ public async Task<bool> PromoteToKbAsync(int id)
             $"## {questionText}\n{answerText}";
 
         // Embed the chunk
-        var embedding = await GetEmbeddingForPromoteAsync(chunkText);
+        var embedding = await _embedding.GetEmbeddingAsync(chunkText);
         if (embedding.Length == 0)
             return false;
 
@@ -753,36 +757,6 @@ public async Task<bool> DeleteUnansweredAsync(int id)
     }
 }
 
-// ================================================================
-// EMBED helper for promote (reuses Ollama)
-// ================================================================
-private async Task<float[]> GetEmbeddingForPromoteAsync(string text)
-{
-    try
-    {
-        var request = new { model = "nomic-embed-text", prompt = text };
-        var httpClient = new HttpClient {
-            Timeout = TimeSpan.FromSeconds(30) };
-        var ollamaUrl = _config["Ollama:BaseUrl"]
-            ?? "http://localhost:11434";
-
-        var response = await httpClient.PostAsJsonAsync(
-            $"{ollamaUrl}/api/embeddings", request);
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content
-            .ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        return json.GetProperty("embedding")
-            .EnumerateArray()
-            .Select(e => (float)e.GetDouble())
-            .ToArray();
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Embed for promote failed");
-        return Array.Empty<float>();
-    }
-}
 
 // ================================================================
 // GET SESSIONS — list all sessions with analytics
