@@ -2,19 +2,20 @@
 
 An AI-powered interview assistant that represents **Sanath Kumar J S** in technical interviews using a personal knowledge base, RAG (Retrieval Augmented Generation), and real-time voice interaction.
 
-> Built with Next.js 14 · .NET 8 · PostgreSQL + pgvector · Groq LLM · Whisper STT
+> Built with Next.js 14 · .NET 8 · PostgreSQL + pgvector · Groq LLM · Whisper STT · HuggingFace Embeddings
 
 ---
 
 ## ✨ Features
 
 - 🧠 **RAG-powered answers** — Answers interview questions using a personal knowledge base of `.md` files
-- 🎙️ **Voice input** — Interviewer can ask questions via microphone (Groq Whisper STT)
-- 🔊 **Voice playback** — Bot answers can be read aloud via browser TTS
+- 🎙️ **Voice input** — Interviewer asks questions via microphone (Groq Whisper STT, auto-sends)
+- 🔊 **Voice playback** — Bot answers read aloud via browser TTS (Web Speech API)
 - 📝 **Unanswered question tracking** — Questions outside the KB are stored for prep
-- 📚 **Prep dashboard** — Review, answer, and promote unanswered questions to the KB
+- 📚 **Prep dashboard** — PIN-protected. Review, answer, and promote questions to the KB
 - 📋 **Session history** — Browse past interviews with full transcripts
 - 📊 **Confidence scoring** — Every answer shows a confidence % based on vector similarity
+- 🏠 **Home page** — Clean landing page with navigation to all routes
 - 📱 **Mobile responsive** — Works on all screen sizes
 
 ---
@@ -27,13 +28,13 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
 │   (Vercel)          │              │   (Railway)           │
 └─────────────────────┘              └──────────┬───────────┘
                                                 │
-                              ┌─────────────────┼──────────────────┐
-                              │                 │                  │
-                    ┌─────────▼──────┐  ┌───────▼──────┐  ┌──────▼──────┐
-                    │  PostgreSQL 16  │  │  Groq Cloud  │  │  Ollama     │
-                    │  + pgvector    │  │  LLM + STT   │  │  Embeddings │
-                    │  (Supabase)    │  │  (Free tier) │  │  (Local)    │
-                    └────────────────┘  └──────────────┘  └─────────────┘
+                         ┌──────────────────────┼───────────────────┐
+                         │                      │                   │
+               ┌─────────▼──────┐    ┌──────────▼─────┐  ┌────────▼────────┐
+               │  PostgreSQL 16  │    │   Groq Cloud   │  │  HuggingFace    │
+               │  + pgvector    │    │  LLM + Whisper │  │  bge-base-en    │
+               │  (Supabase)    │    │  (Free tier)   │  │  Embeddings     │
+               └────────────────┘    └────────────────┘  └─────────────────┘
 ```
 
 ---
@@ -42,41 +43,47 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
 
 ```
 interview-bot/
-├── interview-bot-ui/          # Next.js 14 frontend
+├── interview-bot-ui/               # Next.js 14 frontend
 │   ├── app/
-│   │   ├── page.tsx           # Home page
-│   │   ├── chat/page.tsx      # Chat interface
-│   │   ├── prep/page.tsx      # Prep dashboard (PIN protected)
+│   │   ├── page.tsx                # Home page with route cards
+│   │   ├── layout.tsx              # Root layout + metadata
+│   │   ├── chat/page.tsx           # Main chat interface
+│   │   ├── prep/page.tsx           # Prep dashboard (PIN protected)
 │   │   └── sessions/
-│   │       ├── page.tsx       # Session list
-│   │       └── [id]/page.tsx  # Transcript view
+│   │       ├── page.tsx            # Session history list
+│   │       └── [id]/page.tsx       # Full transcript view
 │   ├── components/
-│   │   ├── Navbar.tsx         # Shared navigation
+│   │   ├── Navbar.tsx              # Shared sticky navigation
 │   │   └── chat/
-│   │       ├── InputBar.tsx   # Text + voice input
-│   │       ├── MessageBubble.tsx
-│   │       └── TypingIndicator.tsx
+│   │       ├── InputBar.tsx        # Text + voice input bar
+│   │       ├── MessageBubble.tsx   # Chat bubble + TTS play button
+│   │       └── TypingIndicator.tsx # Animated dots while bot responds
 │   └── lib/
-│       └── api.ts             # API fetch wrappers
+│       └── api.ts                  # All fetch wrappers
 │
-├── interview-bot-api/         # .NET 8 Web API backend
+├── interview-bot-api/              # .NET 8 Web API backend
 │   ├── Controllers/
-│   │   ├── ChatController.cs
-│   │   ├── TranscribeController.cs
-│   │   └── IngestionController.cs
+│   │   ├── ChatController.cs       # Chat, sessions, unanswered endpoints
+│   │   ├── TranscribeController.cs # POST /api/transcribe (Groq Whisper)
+│   │   └── IngestionController.cs  # POST /api/ingest (KB re-ingestion)
 │   ├── Services/
-│   │   ├── ChatService.cs
-│   │   ├── KnowledgeSearchService.cs
-│   │   ├── IngestionService.cs
-│   │   └── EmbeddingService.cs
-│   └── Models/
-│       └── Models.cs
+│   │   ├── ChatService.cs          # RAG orchestration + DB helpers
+│   │   ├── KnowledgeSearchService.cs # pgvector search + file boost
+│   │   ├── IngestionService.cs     # Chunk + embed + store KB
+│   │   └── EmbeddingService.cs     # HuggingFace BAAI/bge-base-en-v1.5
+│   ├── Models/
+│   │   └── Models.cs               # Request/response models
+│   └── appsettings.example.json    # Config template (copy to appsettings.json)
 │
-└── knowledge-base/            # Personal KB — .md files
+└── knowledge-base/                 # Personal KB — .md files
     ├── introduction.md
     ├── career-journey.md
     ├── ai-rag.md
     ├── dotnet.md
+    ├── challenges.md
+    ├── leadership.md
+    ├── general-hr.md
+    ├── recent-project.md
     └── ...
 ```
 
@@ -92,8 +99,9 @@ interview-bot/
 | .NET SDK | 8.0 | Backend |
 | PostgreSQL | 16 | Database |
 | pgvector | 0.7 | Vector search |
-| Ollama | Latest | Local embeddings |
 | Docker | Optional | DB containerization |
+
+> ⚠️ Ollama is **no longer required**. Embeddings now use HuggingFace cloud API.
 
 ### 1. Clone the repository
 
@@ -116,68 +124,54 @@ docker run --name interview-bot-db \
 psql -U postgres -d interview_bot -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
-Run the schema setup (see `docs/schema.sql` or the Database Schema section below).
-
-### 3. Set up Ollama (local embeddings)
-
-```bash
-# Install Ollama from https://ollama.ai
-ollama pull nomic-embed-text
-```
-
-### 4. Backend setup
+### 3. Backend setup
 
 ```bash
 cd interview-bot-api
 
-# Create appsettings.json (never committed — see appsettings.example.json)
+# Copy config template and fill in your keys
 cp appsettings.example.json appsettings.json
+# Edit appsettings.json with your API keys (see Configuration below)
 
-# Fill in your values (see Configuration section below)
-# Then run:
 dotnet restore
 dotnet run
 # API runs on http://localhost:5267
 ```
 
-### 5. Frontend setup
+### 4. Frontend setup
 
 ```bash
 cd interview-bot-ui
 
-# Create environment file
 cp .env.example .env.local
+# Edit .env.local with your values
 
-# Fill in values then:
 npm install
 npm run dev
 # UI runs on http://localhost:3000
 ```
 
-### 6. Ingest knowledge base
+### 5. Ingest knowledge base
 
-```bash
-curl -X POST http://localhost:5267/api/ingest \
-  -H "X-Admin-Key: your-admin-key"
+```cmd
+curl -X POST http://localhost:5267/api/ingest -H "X-Admin-Key: your-admin-key"
 ```
+
+Expected response: `chunksCreated: 70`
 
 ---
 
 ## ⚙️ Configuration
 
-### Backend — `appsettings.json`
+### Backend — `appsettings.json` (never committed — gitignored)
 
 ```json
 {
-  "DATABASE_URL": "Host=localhost;Port=5432;Database=interview_bot;Username=postgres;Password=postgres123",
+  "DATABASE_URL": "Host=localhost;Port=5432;Database=interview_bot;Username=postgres;Password=yourpassword",
   "ADMIN_INGEST_KEY": "your-secret-key",
   "LlmProvider": "groq",
   "HuggingFace": {
     "ApiKey": "hf_..."
-  },
-  "Ollama": {
-    "BaseUrl": "http://localhost:11434",
-    "EmbeddingModel": "nomic-embed-text"
   },
   "Groq": {
     "ApiKey": "gsk_...",
@@ -187,7 +181,7 @@ curl -X POST http://localhost:5267/api/ingest \
 }
 ```
 
-### Frontend — `.env.local`
+### Frontend — `.env.local` (never committed — gitignored)
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5267
@@ -198,12 +192,10 @@ NEXT_PUBLIC_PREP_PIN=1234
 
 ## 🔑 API Keys Required
 
-| Service | Purpose | Get it at |
-|---|---|---|
-| Groq | LLM chat + Whisper STT | console.groq.com |
-| HuggingFace | Cloud embeddings (for deployment) | huggingface.co/settings/tokens |
-
-Both have **free tiers** sufficient for development and light production use.
+| Service | Purpose | Free tier | Get it at |
+|---|---|---|---|
+| Groq | LLM chat (llama-3.3-70b) + Whisper STT | ✅ Yes | console.groq.com |
+| HuggingFace | Embeddings (bge-base-en-v1.5) | ✅ Yes | huggingface.co/settings/tokens |
 
 ---
 
@@ -212,24 +204,22 @@ Both have **free tiers** sufficient for development and light production use.
 | Method | Endpoint | Description | Auth |
 |---|---|---|---|
 | POST | `/api/chat` | Send message, get RAG answer | None |
-| GET | `/api/sessions` | List all sessions | None |
-| GET | `/api/sessions/{id}/detail` | Full transcript by session id | None |
-| GET | `/api/unanswered` | Prep dashboard questions | None |
+| GET | `/api/sessions` | List all sessions with stats | None |
+| GET | `/api/sessions/{id}/detail` | Full session + transcript by id | None |
+| GET | `/api/unanswered` | Prep dashboard question list | None |
 | PATCH | `/api/unanswered/{id}/answer` | Save answer to question | None |
-| POST | `/api/unanswered/{id}/promote` | Add answer to KB | None |
+| POST | `/api/unanswered/{id}/promote` | Promote answer to KB | None |
 | DELETE | `/api/unanswered/{id}` | Delete question | None |
-| POST | `/api/transcribe` | Audio → text (Whisper) | None |
-| POST | `/api/ingest` | Re-ingest KB files | X-Admin-Key header |
+| POST | `/api/transcribe` | Audio → text via Groq Whisper | None |
+| POST | `/api/ingest` | Re-ingest all KB `.md` files | X-Admin-Key header |
 
 ---
 
 ## 🗄️ Database Schema
 
 ```sql
--- Enable pgvector
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- Core tables
 CREATE TABLE knowledge_chunks (
     id              SERIAL PRIMARY KEY,
     source_file     TEXT,
@@ -297,8 +287,7 @@ CREATE TABLE session_analytics (
 );
 
 -- HNSW index for fast vector search
-CREATE INDEX ON knowledge_chunks
-    USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX ON knowledge_chunks USING hnsw (embedding vector_cosine_ops);
 ```
 
 ---
@@ -308,7 +297,7 @@ CREATE INDEX ON knowledge_chunks
 ```
 Question asked
       ↓
-Embed question (nomic-embed-text, 768d)
+Embed question → HuggingFace BAAI/bge-base-en-v1.5 (768d)
       ↓
 pgvector cosine similarity search (top 15 chunks)
       ↓
@@ -317,7 +306,7 @@ Apply file boost (keyword match → +0.15 to +0.20)
 Re-rank top 10
       ↓
 Confidence decision:
-  ≥ 0.65 → HIGH   → Answer from KB
+  ≥ 0.65 → HIGH   → Answer confidently from KB
   ≥ 0.58 → MEDIUM → Answer from top 3 chunks
   < 0.58 → LOW    → Store as unanswered
       ↓
@@ -330,38 +319,34 @@ Save to chat_messages with confidence score
 
 ---
 
-## 📝 Knowledge Base
+## 🎙️ Voice Input Flow
 
-The KB lives in `/knowledge-base/*.md` files. Each file covers a topic:
-
-| File | Topic |
-|---|---|
-| `introduction.md` | Who Sanath is |
-| `career-journey.md` | Work history |
-| `ai-rag.md` | AI/RAG experience |
-| `dotnet.md` | .NET expertise |
-| `challenges.md` | Challenge examples |
-| `leadership.md` | Leadership experience |
-| ... | ... |
-
-**To add new content:**
-1. Edit or add a `.md` file in `/knowledge-base/`
-2. Call `POST /api/ingest` with admin key
-3. All chunks are re-embedded and indexed (~30–60 seconds)
+```
+User clicks mic → MediaRecorder captures audio/webm
+      ↓
+User clicks mic again to stop
+      ↓
+Audio blob → POST /api/transcribe (multipart)
+      ↓
+.NET → Groq whisper-large-v3-turbo → plain text
+      ↓
+Auto-sends as chat message
+```
 
 ---
 
 ## 🌐 Deployment
 
-### Free Stack (Recommended for pre-prod)
+### Free Stack (pre-prod)
 
 | Layer | Platform | Cost |
 |---|---|---|
 | Frontend | Vercel | Free |
-| Backend | Railway | Free ($5 credit) |
+| Backend | Railway | Free ($5 credit/mo) |
 | Database | Supabase | Free (500MB) |
-| Embeddings | Hugging Face | Free |
+| Embeddings | HuggingFace | Free |
 | LLM + STT | Groq | Free |
+| **Total** | | **$0/month** |
 
 ### Production Stack
 
@@ -370,18 +355,39 @@ The KB lives in `/knowledge-base/*.md` files. Each file covers a topic:
 | Frontend | Vercel / Azure Static Web Apps | Free |
 | Backend | Azure App Service B1 | ~$13/mo |
 | Database | Azure PostgreSQL Flexible | ~$14/mo |
-| Embeddings | OpenAI text-embedding-3-small | ~$0.01/mo |
-| LLM | gpt-4o-mini or Groq 70B | ~$1–3/mo |
+| Embeddings | HuggingFace or OpenAI | ~$0–1/mo |
+| LLM | Groq 70B or gpt-4o-mini | ~$0–3/mo |
+| **Total** | | **~$27–30/mo** |
+
+---
+
+## 📝 Knowledge Base
+
+KB lives in `/knowledge-base/*.md`. To add new content:
+1. Edit or add a `.md` file
+2. Call `POST /api/ingest` with your admin key
+3. All 70 chunks are re-embedded (~30–60 seconds)
+4. New content is immediately live in vector search
 
 ---
 
 ## 🛠️ Development Notes
 
-- `session_analytics` has no auto-trigger — stats fall back to live subqueries from `chat_messages`
-- Ollama is used for embeddings locally only — swap to HuggingFace or OpenAI for cloud deployment
-- The prep dashboard is PIN-protected via `NEXT_PUBLIC_PREP_PIN` env variable
+- `appsettings.json` and `.env.local` are **gitignored** — never committed
+- Always use `appsettings.example.json` and `.env.example` as templates
+- `session_analytics` has no auto-trigger — stats fall back to live subqueries
 - Voice input uses `MediaRecorder` → Groq Whisper → auto-sends transcribed text
-- Voice playback uses `window.speechSynthesis` (browser TTS, no API needed)
+- Voice playback uses `window.speechSynthesis` (browser TTS, no API cost)
+- Embeddings use `BAAI/bge-base-en-v1.5` via HuggingFace router API (768d)
+
+---
+
+## 🔒 Security Notes
+
+- Never commit `appsettings.json` — it contains your API keys
+- Never commit `.env.local` — it contains your prep PIN
+- Rotate API keys immediately if accidentally pushed to GitHub
+- The prep dashboard PIN is set via `NEXT_PUBLIC_PREP_PIN` env variable
 
 ---
 
