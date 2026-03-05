@@ -19,6 +19,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Mobile: prevents zoom on input focus, enables proper dvh, fills notch */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#0d0d0f" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -28,7 +33,11 @@ export default function RootLayout({
       </head>
       <body
         className={`${dmSans.variable} antialiased`}
-        style={{ background: "#0d0d0f", color: "#e8e8ef", fontFamily: "var(--font-dm-sans), DM Sans, sans-serif" }}
+        style={{
+          background: "#0d0d0f", color: "#e8e8ef",
+          fontFamily: "var(--font-dm-sans), DM Sans, sans-serif",
+          overscrollBehavior: "none",
+        }}
       >
         {children}
       </body>

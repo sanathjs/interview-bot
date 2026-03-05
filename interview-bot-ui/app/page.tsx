@@ -15,22 +15,22 @@ const ROUND_TYPES = [
 ];
 
 const C = {
-  bg:      "#0d0d0f",
-  card:    "#1c1c21",
-  border:  "#32323c",
-  input:   "#141417",
-  text:    "#e8e8ef",
-  muted:   "#6b6b7d",
-  subtle:  "#9292a4",
-  amber:   "#f59e0b",
+  bg:     "#0d0d0f",
+  card:   "#1c1c21",
+  border: "#32323c",
+  input:  "#141417",
+  text:   "#e8e8ef",
+  muted:  "#6b6b7d",
+  subtle: "#9292a4",
+  amber:  "#f59e0b",
 };
 
 export default function HomePage() {
   const router = useRouter();
-  const [step, setStep] = useState<"choose" | "pin" | "interviewer">("choose");
-  const [pin, setPin]           = useState("");
-  const [pinError, setPinError] = useState("");
-  const [showPin, setShowPin]   = useState(false);
+  const [step, setStep]                       = useState<"choose" | "pin" | "interviewer">("choose");
+  const [pin, setPin]                         = useState("");
+  const [pinError, setPinError]               = useState("");
+  const [showPin, setShowPin]                 = useState(false);
   const [interviewerName, setInterviewerName] = useState("");
   const [companyName, setCompanyName]         = useState("");
   const [roundType, setRoundType]             = useState("general");
@@ -39,9 +39,8 @@ export default function HomePage() {
   const handlePinSubmit = () => {
     if (pin === PREP_PIN) {
       localStorage.setItem("ib_role", "admin");
-          localStorage.removeItem("ib_interviewer_name"); 
-    localStorage.removeItem("ib_company_name");     
-    localStorage.removeItem("ib_round_type");       
+      localStorage.removeItem("ib_interviewer_name");
+      localStorage.removeItem("ib_company_name");
       router.push("/chat");
     } else {
       setPinError("Incorrect PIN. Try again.");
@@ -86,7 +85,7 @@ export default function HomePage() {
     <div style={{
       minHeight: "100vh", background: C.bg, display: "flex",
       flexDirection: "column", alignItems: "center", justifyContent: "center",
-      padding: "24px 16px", fontFamily: "'DM Sans', sans-serif",
+      padding: "40px 16px", fontFamily: "'DM Sans', sans-serif",
     }}>
 
       {/* Ambient glow */}
@@ -96,7 +95,10 @@ export default function HomePage() {
       }} />
 
       {/* Logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 48, position: "relative" }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 12,
+        marginBottom: 28, position: "relative",
+      }}>
         <div style={{
           width: 44, height: 44, borderRadius: 14,
           background: "linear-gradient(135deg, #f59e0b, #d97706)",
@@ -104,19 +106,150 @@ export default function HomePage() {
           boxShadow: "0 0 24px rgba(245,158,11,0.35)",
         }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="white"/>
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" fill="white"/>
           </svg>
         </div>
         <div>
-          <p style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.2,
-                      fontFamily: "'Playfair Display', serif" }}>
-            Interview Bot
+          <p style={{
+            fontSize: 16, fontWeight: 700, color: C.text, margin: 0,
+            lineHeight: 1.2, fontFamily: "'Playfair Display', serif",
+          }}>Interview Bot</p>
+          <p style={{ fontSize: 12, color: C.muted, margin: "2px 0 0" }}>
+            Powered by RAG · Built by Sanath
           </p>
-          <p style={{ fontSize: 12, color: C.muted, margin: 0, marginTop: 2 }}>Sanath Kumar J S</p>
         </div>
       </div>
 
-      {/* Card */}
+      {/* ── ABOUT SECTION — only on choose step ── */}
+      {step === "choose" && (
+        <div style={{ width: "100%", maxWidth: 420, marginBottom: 16 }}>
+
+          {/* Profile card */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 14,
+            padding: "16px 20px", marginBottom: 10,
+            background: C.card, border: `1px solid ${C.border}`, borderRadius: 20,
+          }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: "50%", flexShrink: 0,
+              border: "2px solid rgba(245,158,11,0.4)", overflow: "hidden",
+              boxShadow: "0 0 0 3px rgba(245,158,11,0.08)",
+            }}>
+              <img src="/profile-avatar.jpg" alt="Sanath"
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                onError={e => {
+                  e.currentTarget.style.display = "none";
+                  if (e.currentTarget.parentElement) {
+                    e.currentTarget.parentElement.style.background = "rgba(245,158,11,0.12)";
+                    e.currentTarget.parentElement.innerHTML =
+                      `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#f59e0b">S</span>`;
+                  }
+                }}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <p style={{
+                  fontSize: 15, fontWeight: 700, color: C.text, margin: 0,
+                  fontFamily: "'Playfair Display', serif",
+                }}>Sanath Kumar J S</p>
+                <span style={{
+                  fontSize: 10, padding: "2px 8px", borderRadius: 99, fontWeight: 600,
+                  background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)",
+                  color: "#34d399",
+                }}>AI Twin</span>
+              </div>
+              <p style={{ fontSize: 12, color: C.muted, margin: "3px 0 0" }}>
+                Lead Software Engineer · 10+ yrs · Bengaluru
+              </p>
+            </div>
+          </div>
+
+          {/* What is this */}
+          <div style={{
+            padding: "16px 20px", marginBottom: 10,
+            background: C.card, border: `1px solid ${C.border}`, borderRadius: 20,
+          }}>
+            <p style={{
+              fontSize: 11, fontWeight: 600, color: C.muted, margin: "0 0 10px",
+              textTransform: "uppercase", letterSpacing: "0.07em",
+            }}>What is this?</p>
+            <p style={{ fontSize: 13, color: C.subtle, margin: 0, lineHeight: 1.75 }}>
+              This is Sanath's <strong style={{ color: C.text }}>digital brain</strong> — an AI bot he built
+              to represent himself in technical interviews. His career, projects, skills, and
+              experience are stored as a <strong style={{ color: C.amber }}>personal knowledge base</strong> and
+              retrieved live using a <strong style={{ color: C.amber }}>RAG pipeline</strong> to answer your questions
+              exactly as he would.
+            </p>
+            <p style={{ fontSize: 13, color: C.subtle, margin: "10px 0 0", lineHeight: 1.75 }}>
+              Think of it as Sanath's twin — same knowledge, available 24/7, built to{" "}
+              <strong style={{ color: C.text }}>show AI skills live</strong> rather than just describe them
+              on a resume.
+            </p>
+          </div>
+
+          {/* How it works */}
+          <div style={{
+            padding: "14px 20px", marginBottom: 10,
+            background: C.card, border: `1px solid ${C.border}`, borderRadius: 20,
+          }}>
+            <p style={{
+              fontSize: 11, fontWeight: 600, color: C.muted, margin: "0 0 12px",
+              textTransform: "uppercase", letterSpacing: "0.07em",
+            }}>Under the hood</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { step: "01", label: "You ask",       desc: "Any question about Sanath's background, skills, or experience" },
+                { step: "02", label: "KB searched",   desc: "pgvector finds the most relevant chunks from his knowledge base using cosine similarity" },
+                { step: "03", label: "LLM answers",   desc: "Groq llama-3.3-70b generates a response in Sanath's voice using only retrieved context" },
+                { step: "04", label: "Gaps tracked",  desc: "Questions the bot can't answer are saved — Sanath reviews and adds them to the KB" },
+              ].map(({ step: s, label: l, desc: d }) => (
+                <div key={s} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: C.amber, flexShrink: 0,
+                    marginTop: 2, fontVariantNumeric: "tabular-nums",
+                  }}>{s}</span>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: 0 }}>{l}</p>
+                    <p style={{ fontSize: 11, color: C.muted, margin: "2px 0 0", lineHeight: 1.6 }}>{d}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tech stack pills */}
+          <div style={{
+            padding: "12px 16px", marginBottom: 10,
+            background: C.card, border: `1px solid ${C.border}`, borderRadius: 16,
+            display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
+          }}>
+            <span style={{ fontSize: 11, color: C.muted, marginRight: 4 }}>Stack:</span>
+            {["Next.js 14", ".NET 8", "pgvector", "Groq LLM", "HuggingFace Embeddings"].map(t => (
+              <span key={t} style={{
+                fontSize: 11, padding: "3px 9px", borderRadius: 99,
+                background: C.input, border: `1px solid ${C.border}`, color: C.subtle,
+              }}>{t}</span>
+            ))}
+          </div>
+
+          {/* Disclaimer */}
+          <div style={{
+            padding: "12px 16px",
+            background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.13)",
+            borderRadius: 16, display: "flex", gap: 10, alignItems: "flex-start",
+          }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>⚠️</span>
+            <p style={{ fontSize: 11, color: C.muted, margin: 0, lineHeight: 1.7 }}>
+              This bot may occasionally give <strong style={{ color: C.subtle }}>inaccurate or incomplete answers</strong>.
+              {" "}Always verify important details directly with Sanath.
+              {" "}<strong style={{ color: C.amber }}>This is a live demo of RAG in production</strong> — not a replacement for the real conversation.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── CARD ── */}
       <div style={{
         width: "100%", maxWidth: 420, background: C.card,
         border: `1px solid ${C.border}`, borderRadius: 24, padding: 32,
@@ -126,9 +259,13 @@ export default function HomePage() {
         {/* ── CHOOSE ROLE ── */}
         {step === "choose" && (
           <>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28,
-                         color: C.text, margin: "0 0 6px" }}>Welcome</h1>
-            <p style={{ fontSize: 14, color: C.muted, margin: "0 0 28px" }}>Who are you today?</p>
+            <h1 style={{
+              fontFamily: "'Playfair Display', serif", fontSize: 26,
+              color: C.text, margin: "0 0 6px",
+            }}>Ready to interview?</h1>
+            <p style={{ fontSize: 14, color: C.muted, margin: "0 0 24px" }}>
+              Who are you today?
+            </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <button onClick={() => setStep("interviewer")} style={{
@@ -136,7 +273,7 @@ export default function HomePage() {
                 padding: "16px 20px", borderRadius: 16, border: "none",
                 background: "linear-gradient(135deg, #f59e0b, #d97706)",
                 cursor: "pointer", textAlign: "left", width: "100%",
-                boxShadow: "0 0 24px rgba(245,158,11,0.2)",
+                boxShadow: "0 0 24px rgba(245,158,11,0.2)", fontFamily: "inherit",
               }}>
                 <div style={{
                   width: 40, height: 40, borderRadius: 12, flexShrink: 0,
@@ -149,8 +286,12 @@ export default function HomePage() {
                   </svg>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "white", margin: 0 }}>I'm an Interviewer</p>
-                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", margin: "3px 0 0" }}>Start a new interview session</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "white", margin: 0 }}>
+                    I'm an Interviewer
+                  </p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", margin: "3px 0 0" }}>
+                    Start a new interview session
+                  </p>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
@@ -162,6 +303,7 @@ export default function HomePage() {
                 padding: "16px 20px", borderRadius: 16,
                 border: `1px solid ${C.border}`, background: C.input,
                 cursor: "pointer", textAlign: "left", width: "100%",
+                fontFamily: "inherit",
               }}>
                 <div style={{
                   width: 40, height: 40, borderRadius: 12, flexShrink: 0,
@@ -174,8 +316,12 @@ export default function HomePage() {
                   </svg>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>I'm Sanath</p>
-                  <p style={{ fontSize: 12, color: C.muted, margin: "3px 0 0" }}>Admin access with PIN</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>
+                    I'm Sanath
+                  </p>
+                  <p style={{ fontSize: 12, color: C.muted, margin: "3px 0 0" }}>
+                    Admin access with PIN
+                  </p>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <path d="M9 18l6-6-6-6" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/>
@@ -190,9 +336,13 @@ export default function HomePage() {
           <>
             <button onClick={() => { setStep("choose"); setPin(""); setPinError(""); }}
               style={backBtn}>← Back</button>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28,
-                         color: C.text, margin: "0 0 6px" }}>Admin Access</h1>
-            <p style={{ fontSize: 14, color: C.muted, margin: "0 0 28px" }}>Enter your PIN to continue</p>
+            <h1 style={{
+              fontFamily: "'Playfair Display', serif", fontSize: 28,
+              color: C.text, margin: "0 0 6px",
+            }}>Admin Access</h1>
+            <p style={{ fontSize: 14, color: C.muted, margin: "0 0 28px" }}>
+              Enter your PIN to continue
+            </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ position: "relative" }}>
@@ -210,12 +360,17 @@ export default function HomePage() {
                   background: "none", border: "none", cursor: "pointer",
                   color: C.muted, padding: 0, display: "flex",
                 }}>
-                  {showPin ? <EyeOff size={15} color={C.muted} /> : <Eye size={15} color={C.muted} />}
+                  {showPin
+                    ? <EyeOff size={15} color={C.muted} />
+                    : <Eye size={15} color={C.muted} />
+                  }
                 </button>
               </div>
               {pinError && <p style={{ fontSize: 12, color: "#f87171", margin: 0 }}>{pinError}</p>}
-              <button onClick={handlePinSubmit} disabled={!pin}
-                style={{ ...amberBtn, opacity: !pin ? 0.4 : 1, cursor: !pin ? "not-allowed" : "pointer" }}>
+              <button onClick={handlePinSubmit} disabled={!pin} style={{
+                ...amberBtn, opacity: !pin ? 0.4 : 1,
+                cursor: !pin ? "not-allowed" : "pointer",
+              }}>
                 Continue
               </button>
             </div>
@@ -227,8 +382,10 @@ export default function HomePage() {
           <>
             <button onClick={() => { setStep("choose"); setFormError(""); }}
               style={backBtn}>← Back</button>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28,
-                         color: C.text, margin: "0 0 6px" }}>Before we start</h1>
+            <h1 style={{
+              fontFamily: "'Playfair Display', serif", fontSize: 28,
+              color: C.text, margin: "0 0 6px",
+            }}>Before we start</h1>
             <p style={{ fontSize: 14, color: C.muted, margin: "0 0 28px" }}>
               A few quick details to set up your session
             </p>
@@ -296,8 +453,8 @@ export default function HomePage() {
         )}
       </div>
 
-      <p style={{ fontSize: 12, color: "#32323c", marginTop: 40 }}>
-        Built by Sanath Kumar J S · {new Date().getFullYear()}
+      <p style={{ fontSize: 12, color: "#32323c", marginTop: 32 }}>
+        Built with ❤️ by Sanath Kumar J S · {new Date().getFullYear()}
       </p>
     </div>
   );

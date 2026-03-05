@@ -99,55 +99,78 @@ export default function InputBar({ onSend, disabled }: Props) {
 
   return (
     <div style={{
-      padding: "12px 16px",
-      background: "#0d0d0f",
-      borderTop: `1px solid ${C.border}`,
-      flexShrink: 0,
+      padding: "10px 12px 10px",
+      background: "#141417",
     }}>
+      {/* Error / hint row */}
+      {(micError || isRecording) && (
+        <p style={{
+          textAlign: "center", fontSize: 11, marginBottom: 6,
+          color: micError ? "#f87171" : C.amber,
+        }}>
+          {micError || "🎙 Listening... tap stop when done"}
+        </p>
+      )}
+
+      {/* WhatsApp-style row: input + mic + send */}
       <div style={{
         display: "flex", gap: 8, alignItems: "flex-end",
         maxWidth: 720, margin: "0 auto",
       }}>
+        {/* Input pill — auto-grows, max 5 lines */}
+        <div style={{
+          flex: 1, display: "flex", alignItems: "flex-end",
+          background: "#1c1c21",
+          border: `1px solid ${isRecording ? C.amber : inputFocused ? C.amber : C.border}`,
+          borderRadius: 22, padding: "0 4px 0 14px",
+          transition: "border-color 0.2s",
+          boxShadow: inputFocused ? "0 0 0 3px rgba(245,158,11,0.08)" : "none",
+          minHeight: 44,
+        }}>
+          <textarea
+            value={input}
+            onChange={e => {
+              setInput(e.target.value);
+              // Auto-grow
+              e.target.style.height = "auto";
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+            }}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            disabled={disabled || micState !== "idle"}
+            placeholder={
+              isRecording    ? "🎙 Listening..." :
+              isTranscribing ? "Transcribing..." :
+              "Ask a question..."
+            }
+            rows={1}
+            style={{
+              flex: 1, resize: "none", border: "none", outline: "none",
+              background: "transparent", color: C.text,
+              fontSize: 15, lineHeight: 1.45, fontFamily: "inherit",
+              padding: "11px 0", minHeight: 44,
+              maxHeight: 120, overflowY: "auto",
+              // Prevent iOS zoom on focus (needs font-size >= 16 or this)
+              WebkitTextSizeAdjust: "100%",
+            } as React.CSSProperties}
+          />
+        </div>
 
-        {/* Textarea */}
-        <textarea
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setInputFocused(false)}
-          disabled={disabled || micState !== "idle"}
-          placeholder={
-            isRecording    ? "🎙 Listening..." :
-            isTranscribing ? "Transcribing..."  :
-            "Ask a question..."
-          }
-          rows={1}
-          style={{
-            flex: 1, resize: "none", borderRadius: 12,
-            padding: "10px 14px", fontSize: 14,
-            background: C.bg,
-            border: `1px solid ${isRecording ? C.amber : inputFocused ? C.amber : C.border}`,
-            color: C.text,
-            outline: "none", fontFamily: "inherit",
-            minHeight: 42, maxHeight: 100,
-            transition: "border-color 0.2s",
-            boxShadow: inputFocused ? "0 0 0 3px rgba(245,158,11,0.1)" : "none",
-          }}
-        />
-
-        {/* Mic button */}
+        {/* Mic button — circular */}
         <button onClick={handleMicClick} disabled={disabled || isTranscribing}
           style={{
-            width: 42, height: 42, borderRadius: 12, border: "none", cursor: "pointer",
+            width: 44, height: 44, borderRadius: "50%", border: "none",
+            cursor: disabled || isTranscribing ? "not-allowed" : "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            background: isRecording ? "rgba(245,158,11,0.15)" : C.bg,
-            outline: `1px solid ${isRecording ? "rgba(245,158,11,0.4)" : C.border}`,
+            background: isRecording ? "rgba(245,158,11,0.15)" : "#1c1c21",
+            outline: `1px solid ${isRecording ? "rgba(245,158,11,0.5)" : C.border}`,
             color: isRecording ? C.amber : isTranscribing ? "#4a4a58" : "#9292a4",
             transition: "all 0.2s",
+            boxShadow: isRecording ? "0 0 12px rgba(245,158,11,0.2)" : "none",
           }}>
           {isTranscribing ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                  style={{ animation: "spin 1s linear infinite" }}>
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"
                       strokeDasharray="31.4" strokeDashoffset="10"/>
@@ -159,38 +182,31 @@ export default function InputBar({ onSend, disabled }: Props) {
               <rect x="14" y="4" width="4" height="16" rx="1"/>
             </svg>
           ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke="currentColor" strokeWidth="2"/>
               <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           )}
         </button>
 
-        {/* Send button */}
+        {/* Send button — circular amber */}
         <button onClick={handleSend} disabled={!canSend}
           style={{
-            width: 42, height: 42, borderRadius: 12, border: "none", cursor: canSend ? "pointer" : "not-allowed",
+            width: 44, height: 44, borderRadius: "50%", border: "none",
+            cursor: canSend ? "pointer" : "not-allowed",
             display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            background: canSend ? "linear-gradient(135deg, #f59e0b, #d97706)" : C.bg,
+            background: canSend ? "linear-gradient(135deg, #f59e0b, #d97706)" : "#1c1c21",
             outline: `1px solid ${canSend ? "transparent" : C.border}`,
-            opacity: canSend ? 1 : 0.4,
-            boxShadow: canSend ? "0 0 16px rgba(245,158,11,0.3)" : "none",
+            opacity: canSend ? 1 : 0.35,
+            boxShadow: canSend ? "0 0 16px rgba(245,158,11,0.35)" : "none",
             transition: "all 0.2s",
           }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
             <line x1="22" y1="2" x2="11" y2="13" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
             <polygon points="22 2 15 22 11 13 2 9 22 2" fill="white"/>
           </svg>
         </button>
       </div>
-
-      {/* Hint / error */}
-      <p style={{
-        textAlign: "center", fontSize: 11, marginTop: 8,
-        color: micError ? "#f87171" : "#32323c",
-      }}>
-        {micError || (isRecording ? "Click stop when done speaking" : "Enter to send · Shift+Enter for new line")}
-      </p>
     </div>
   );
 }

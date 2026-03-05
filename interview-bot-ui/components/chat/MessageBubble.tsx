@@ -168,12 +168,13 @@ interface Props {
   streaming?: boolean;
   showFollowUps: boolean;
   showSourceDetails: boolean;
+  usedFollowUps?: Set<string>;
   onFeedback?: (id: string, helpful: boolean) => void;
   onFollowUp?: (q: string) => void;
 }
 
 export default function MessageBubble({
-  message, streaming, showFollowUps, showSourceDetails, onFeedback, onFollowUp,
+  message, streaming, showFollowUps, showSourceDetails, usedFollowUps, onFeedback, onFollowUp,
 }: Props) {
   const isBot        = message.role === "bot";
   const isUnanswered = message.answerSource === "unanswered";
@@ -211,16 +212,26 @@ export default function MessageBubble({
     }}>
       <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
-      {/* Bot avatar */}
+      {/* Bot avatar — Sanath's photo */}
       {isBot && (
         <div style={{
           width: 32, height: 32, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-          background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.2)",
-          display: "flex", alignItems: "center", justifyContent: "center",
+          border: "1.5px solid rgba(245,158,11,0.35)", overflow: "hidden",
+          boxShadow: "0 0 0 2px rgba(245,158,11,0.1)",
         }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="#f59e0b"/>
-          </svg>
+          <img
+            src="/profile-avatar.jpg"
+            alt="Sanath"
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            onError={e => {
+              const el = e.currentTarget;
+              el.style.display = "none";
+              if (el.parentElement) {
+                el.parentElement.style.background = "rgba(245,158,11,0.12)";
+                el.parentElement.innerHTML = `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#f59e0b">S</span>`;
+              }
+            }}
+          />
         </div>
       )}
 
@@ -314,31 +325,35 @@ export default function MessageBubble({
           {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
 
-        {/* Follow-ups */}
-        {isBot && !streaming && showFollowUps && (message.followUps?.length ?? 0) > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 5, width: "100%", marginTop: 2 }}>
-            <p style={{ fontSize: 11, color: "#4a4a58", margin: 0, padding: "0 2px" }}>
-              Suggested follow-ups
-            </p>
-            {message.followUps?.map((q, i) => (
-              <button key={i} onClick={() => onFollowUp?.(q)} style={{
-                textAlign: "left", fontSize: 12, padding: "8px 12px", borderRadius: 10,
-                cursor: "pointer", width: "100%", background: C.input,
-                border: `1px solid ${C.border}`, color: C.subtle, fontFamily: "inherit",
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(245,158,11,0.3)";
-                (e.currentTarget as HTMLButtonElement).style.color = "#fbbf24";
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = C.border;
-                (e.currentTarget as HTMLButtonElement).style.color = C.subtle;
-              }}>
-                → {q}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Follow-ups — filter out already used/seen ones */}
+        {(() => {
+          const available = (message.followUps ?? []).filter(q => !usedFollowUps?.has(q));
+          if (!isBot || streaming || !showFollowUps || available.length === 0) return null;
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 5, width: "100%", marginTop: 2 }}>
+              <p style={{ fontSize: 11, color: "#4a4a58", margin: 0, padding: "0 2px" }}>
+                Suggested follow-ups
+              </p>
+              {available.map((q, i) => (
+                <button key={i} onClick={() => onFollowUp?.(q)} style={{
+                  textAlign: "left", fontSize: 12, padding: "8px 12px", borderRadius: 10,
+                  cursor: "pointer", width: "100%", background: C.input,
+                  border: `1px solid ${C.border}`, color: C.subtle, fontFamily: "inherit",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(245,158,11,0.3)";
+                  (e.currentTarget as HTMLButtonElement).style.color = "#fbbf24";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = C.border;
+                  (e.currentTarget as HTMLButtonElement).style.color = C.subtle;
+                }}>
+                  → {q}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Interviewer avatar */}

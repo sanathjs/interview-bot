@@ -55,6 +55,31 @@ export default function PrepPage() {
   const [feedback, setFeedback]   = useState<Record<number, string>>({});
   const [loading, setLoading]     = useState(false);
   const [focused, setFocused]     = useState<number | null>(null);
+  const [ingesting, setIngesting]   = useState(false);
+  const [ingestMsg, setIngestMsg]   = useState<{ ok: boolean; text: string } | null>(null);
+
+  const handleIngest = async () => {
+    setIngesting(true);
+    setIngestMsg(null);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5267";
+      const adminKey = process.env.NEXT_PUBLIC_ADMIN_INGEST_KEY || "";
+      const res = await fetch(`${API_URL}/api/ingest`, {
+        method: "POST",
+        headers: { "X-Admin-Key": adminKey },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIngestMsg({ ok: true, text: `✅ Re-ingested successfully · ${data.chunksCreated ?? "?"} chunks` });
+      } else {
+        setIngestMsg({ ok: false, text: "❌ Ingest failed — check admin key" });
+      }
+    } catch {
+      setIngestMsg({ ok: false, text: "❌ Could not reach backend" });
+    } finally {
+      setIngesting(false);
+    }
+  };
 
   const handleUnlock = () => {
     if (pin === PIN) { setUnlocked(true); setPinError(false); }
@@ -196,6 +221,7 @@ export default function PrepPage() {
   // ── Main Dashboard ─────────────────────────────────────────────
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none",
@@ -226,12 +252,49 @@ export default function PrepPage() {
             </p>
           </div>
         </div>
-        <a href="/chat" style={{
-          fontSize: 12, color: C.muted, textDecoration: "none",
-          padding: "6px 12px", borderRadius: 8,
-          border: `1px solid ${C.border}`, background: C.input,
-        }}>← Back to chat</a>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={handleIngest} disabled={ingesting} style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 14px", borderRadius: 8, cursor: ingesting ? "not-allowed" : "pointer",
+            border: "1px solid rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.08)",
+            color: C.amber, fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+            opacity: ingesting ? 0.6 : 1, transition: "all 0.15s",
+          }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                 style={{ animation: ingesting ? "spin 1s linear infinite" : "none" }}>
+              <path d="M23 4v6h-6M1 20v-6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {ingesting ? "Ingesting..." : "Re-ingest KB"}
+          </button>
+          <a href="/chat" style={{
+            fontSize: 12, color: C.muted, textDecoration: "none",
+            padding: "6px 12px", borderRadius: 8,
+            border: `1px solid ${C.border}`, background: C.input,
+          }}>← Back to chat</a>
+        </div>
       </header>
+
+      {/* Ingest result toast */}
+      {ingestMsg && (
+        <div style={{
+          margin: "0 auto", maxWidth: 720, padding: "10px 16px 0",
+        }}>
+          <div style={{
+            padding: "10px 16px", borderRadius: 12,
+            background: ingestMsg.ok ? "rgba(52,211,153,0.07)" : "rgba(248,113,113,0.07)",
+            border: `1px solid ${ingestMsg.ok ? "rgba(52,211,153,0.2)" : "rgba(248,113,113,0.2)"}`,
+            fontSize: 12, color: ingestMsg.ok ? "#34d399" : "#f87171",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <span>{ingestMsg.text}</span>
+            <button onClick={() => setIngestMsg(null)} style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "inherit", fontSize: 14, padding: 0, opacity: 0.6,
+            }}>✕</button>
+          </div>
+        </div>
+      )}
 
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px" }}>
 
