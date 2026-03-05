@@ -206,9 +206,11 @@ export default function MessageBubble({
 
   return (
     <div style={{
-      display: "flex", gap: 10,
+      display: "flex", gap: 8, alignItems: "flex-start",
       justifyContent: isBot ? "flex-start" : "flex-end",
       animation: "fadeUp 0.25s ease forwards",
+      // Prevent row from exceeding screen width on mobile
+      width: "100%", minWidth: 0,
     }}>
       <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
@@ -237,7 +239,10 @@ export default function MessageBubble({
 
       {/* Column: bubble + banner + meta + followups */}
       <div style={{
-        maxWidth: "78%", display: "flex", flexDirection: "column",
+        // 32px avatar + 8px gap = 40px taken; leave room on both sides
+        maxWidth: "calc(100% - 48px)",
+        flex: "1 1 auto", minWidth: 0,
+        display: "flex", flexDirection: "column",
         gap: 5, alignItems: isBot ? "flex-start" : "flex-end",
       }}>
 
@@ -356,12 +361,15 @@ export default function MessageBubble({
         })()}
       </div>
 
-      {/* Interviewer avatar */}
+      {/* Interviewer avatar — always visible, never cut off */}
       {!isBot && (
         <div style={{
-          width: 32, height: 32, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+          width: 32, height: 32, borderRadius: "50%",
+          flexShrink: 0,   // never compress
+          marginTop: 2,
           background: "linear-gradient(135deg, #f59e0b, #d97706)",
           display: "flex", alignItems: "center", justifyContent: "center",
+          order: 1,        // always stays after the bubble in the row
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="8" r="4" stroke="white" strokeWidth="2"/>
