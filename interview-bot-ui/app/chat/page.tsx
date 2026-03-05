@@ -7,6 +7,7 @@ import MessageBubble from "@/components/chat/MessageBubble";
 import TypingIndicator from "@/components/chat/TypingIndicator";
 import InputBar from "@/components/chat/InputBar";
 import Navbar from "@/components/Navbar";
+import ProjectExplainer from "@/components/ProjectExplainer";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5267";
 
@@ -570,6 +571,8 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
       </div>
+
+      <ProjectExplainer />
 
       {/* Sticky input bar — WhatsApp style, safe area for notched phones */}
       <div style={{
