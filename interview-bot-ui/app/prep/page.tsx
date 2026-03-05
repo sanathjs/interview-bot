@@ -403,7 +403,7 @@ export default function PrepPage() {
                             disabled={promoting[q.id]}
                             style={{
                               display: "flex", alignItems: "center", gap: 6,
-                              padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+                              padding: "8px 16px", borderRadius: 10, cursor: "pointer",
                               background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.25)",
                               color: "#34d399", fontSize: 12, fontWeight: 600, fontFamily: "inherit",
                               opacity: promoting[q.id] ? 0.4 : 1,
