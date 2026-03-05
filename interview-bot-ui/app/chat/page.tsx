@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Message, ConversationTurn } from "@/types";
 import { sendMessage } from "@/lib/api";
 import MessageBubble from "@/components/chat/MessageBubble";
@@ -29,7 +29,7 @@ const ROUND_LABELS: Record<string, string> = {
   behavioural: "Behavioural", general: "General",
 };
 
-const HISTORY_WINDOW = 6; // number of recent turns to send (3 exchanges)
+const HISTORY_WINDOW = 6;
 
 function Toggle({ on, onChange, label, desc }: {
   on: boolean; onChange: (v: boolean) => void; label: string; desc: string;
@@ -53,10 +53,8 @@ function Toggle({ on, onChange, label, desc }: {
       }}>
         <div style={{
           width: 16, height: 16, borderRadius: "50%", background: "white",
-          position: "absolute", top: 3,
-          left: on ? 19 : 3,
-          transition: "left 0.2s",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+          position: "absolute", top: 3, left: on ? 19 : 3,
+          transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
         }} />
       </button>
     </div>
@@ -75,6 +73,8 @@ export default function ChatPage() {
   const [questionCount, setQuestionCount] = useState(0);
   const [showSettings, setShowSettings]   = useState(false);
   const bottomRef                         = useRef<HTMLDivElement>(null);
+  const sessionIdRef                      = useRef<string>("");  // stable ref for cleanup
+  const endedRef                          = useRef(false);       // stable ref for cleanup
 
   const [showFollowUps,    setShowFollowUps]    = useState(true);
   const [showSourceDetail, setShowSourceDetail] = useState(true);
@@ -84,6 +84,20 @@ export default function ChatPage() {
   const [roundType, setRoundType]             = useState("general");
   const [isAdmin, setIsAdmin]                 = useState(false);
 
+  // ── Silently end a session via fetch (used in cleanup) ─────────
+  const endSession = useCallback(async (sid: string) => {
+    if (!sid || endedRef.current) return;
+    endedRef.current = true;
+    try {
+      await fetch(`${API_URL}/api/sessions/${sid}/end`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,   // keeps request alive even if page unloads
+      });
+    } catch { /* silent */ }
+  }, []);
+
+  // ── Init ────────────────────────────────────────────────────────
   useEffect(() => {
     const sid     = `session-${Date.now()}`;
     const name    = localStorage.getItem("ib_interviewer_name");
@@ -97,6 +111,7 @@ export default function ChatPage() {
     if (storedSource    !== null) setShowSourceDetail(storedSource === "true");
 
     setSessionId(sid);
+    sessionIdRef.current = sid;
     setInterviewerName(name);
     setCompanyName(company);
     setRoundType(round);
@@ -111,7 +126,26 @@ export default function ChatPage() {
       id: "welcome", role: "bot", text: greeting,
       answerSource: "greeting", timestamp: new Date().toISOString(),
     }]);
-  }, []);
+
+    // ── Auto-end when tab closes / navigates away ──────────────
+    const handleBeforeUnload = () => {
+      // Use sendBeacon for guaranteed delivery on page unload
+      if (!endedRef.current && sessionIdRef.current) {
+        navigator.sendBeacon(
+          `${API_URL}/api/sessions/${sessionIdRef.current}/end`,
+        );
+        endedRef.current = true;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Cleanup on React unmount (SPA navigation)
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      endSession(sessionIdRef.current);
+    };
+  }, [endSession]);
 
   const handleFollowUpsToggle = (v: boolean) => {
     setShowFollowUps(v);
@@ -150,13 +184,11 @@ export default function ChatPage() {
       id: newId(), role: "interviewer", text, timestamp: new Date().toISOString(),
     };
 
-    // Build history from current messages — last N turns, excluding greetings
-    const allMsgs = [...messages, interviewerMsg];
+    const allMsgs      = [...messages, interviewerMsg];
     const relevantMsgs = allMsgs.filter(m => m.answerSource !== "greeting");
     const recentMsgs   = relevantMsgs.slice(-HISTORY_WINDOW);
     const history: ConversationTurn[] = recentMsgs.map(m => ({
-      role: m.role,
-      text: m.text,
+      role: m.role, text: m.text,
     }));
 
     setMessages(prev => [...prev, interviewerMsg]);
@@ -165,14 +197,9 @@ export default function ChatPage() {
 
     const botMsgId = newId();
     try {
-      const response = await sendMessage({
-        sessionId,
-        message: text,
-        roundType,
-        history,   // ← send full recent context
-      });
-
+      const response = await sendMessage({ sessionId, message: text, roundType, history });
       const words = response.answer.split(" ");
+
       setMessages(prev => [...prev, {
         id: botMsgId, role: "bot", text: "",
         answerSource: response.answerSource as Message["answerSource"],
@@ -216,11 +243,8 @@ export default function ChatPage() {
   const handleEndSession = async () => {
     if (ending || ended) return;
     setEnding(true);
-    try {
-      await fetch(`${API_URL}/api/sessions/${sessionId}/end`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-      });
-    } catch { /* show thank you anyway */ }
+    endedRef.current = true;
+    await endSession(sessionId);
     setEnded(true);
     setEnding(false);
   };
@@ -235,8 +259,28 @@ export default function ChatPage() {
   // ── THANK YOU SCREEN ──────────────────────────────────────────
   if (ended) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: C.bg }}>
+      <div style={{
+        minHeight: "100vh", background: C.bg, display: "flex",
+        flexDirection: "column", fontFamily: "'DM Sans', sans-serif",
+      }}>
         <Navbar />
+
+        {/* Ended banner */}
+        <div style={{
+          padding: "10px 20px", display: "flex", alignItems: "center",
+          justifyContent: "center", gap: 8,
+          background: "rgba(52,211,153,0.07)",
+          borderBottom: "1px solid rgba(52,211,153,0.15)",
+        }}>
+          <div style={{
+            width: 7, height: 7, borderRadius: "50%",
+            background: "#34d399", boxShadow: "0 0 6px #34d399",
+          }} />
+          <span style={{ fontSize: 12, color: "#34d399", fontWeight: 500 }}>
+            Session ended · {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        </div>
+
         <div style={{
           flex: 1, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
@@ -248,12 +292,16 @@ export default function ChatPage() {
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-              <polyline points="20 6 9 17 4 12" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <polyline points="20 6 9 17 4 12" stroke="#34d399" strokeWidth="2.5"
+                        strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, color: C.text, margin: "0 0 10px" }}>
-            Interview Complete
-          </h2>
+
+          <h2 style={{
+            fontFamily: "'Playfair Display', serif", fontSize: 28,
+            color: C.text, margin: "0 0 10px",
+          }}>Interview Complete</h2>
+
           {interviewerName && (
             <p style={{ fontSize: 14, color: C.subtle, margin: "0 0 6px" }}>
               Thank you, <strong style={{ color: C.text }}>{interviewerName}</strong>
@@ -263,7 +311,11 @@ export default function ChatPage() {
           <p style={{ fontSize: 14, color: C.muted, maxWidth: 280, lineHeight: 1.6, margin: "0 0 32px" }}>
             It was a pleasure. Sanath will be in touch with you shortly.
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 32, width: "100%", maxWidth: 340 }}>
+
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(3,1fr)",
+            gap: 12, marginBottom: 32, width: "100%", maxWidth: 340,
+          }}>
             {[
               { label: "Questions",      value: questionCount },
               { label: "Avg Confidence", value: avgConfidence ? `${confPct}%` : "—" },
@@ -278,6 +330,7 @@ export default function ChatPage() {
               </div>
             ))}
           </div>
+
           <div style={{ display: "flex", gap: 12 }}>
             <button onClick={() => window.location.reload()} style={{
               padding: "10px 24px", borderRadius: 16, border: "none", cursor: "pointer",
@@ -307,8 +360,20 @@ export default function ChatPage() {
         borderBottom: `1px solid ${C.border}`, flexShrink: 0, flexWrap: "wrap", gap: 8,
       }}>
         <div>
-          <p style={{ fontSize: 13, fontWeight: 600, color: C.text, margin: 0 }}>Sanath Kumar J S</p>
+          <p style={{ fontSize: 13, fontWeight: 600, color: C.text, margin: 0 }}>
+            Sanath Kumar J S
+          </p>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, flexWrap: "wrap" }}>
+            {/* Live indicator */}
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: "#34d399", boxShadow: "0 0 5px #34d399",
+                animation: "pulse 2s ease infinite",
+              }} />
+              <span style={{ fontSize: 11, color: "#34d399", fontWeight: 500 }}>Live</span>
+            </div>
+            <span style={{ color: C.border }}>·</span>
             <span style={{ fontSize: 11, color: C.muted }}>Lead Software Engineer</span>
             {companyName && <>
               <span style={{ color: C.border }}>·</span>
@@ -337,7 +402,7 @@ export default function ChatPage() {
             </div>
           )}
 
-          {/* Admin settings gear */}
+          {/* Admin settings */}
           {isAdmin && (
             <div style={{ position: "relative" }}>
               <button onClick={() => setShowSettings(s => !s)} style={{
@@ -346,7 +411,6 @@ export default function ChatPage() {
                 background: showSettings ? "rgba(245,158,11,0.12)" : C.card,
                 outline: `1px solid ${showSettings ? "rgba(245,158,11,0.3)" : C.border}`,
                 color: showSettings ? C.amber : C.subtle,
-                transition: "all 0.15s",
               }} title="Admin Settings">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
@@ -379,20 +443,23 @@ export default function ChatPage() {
             </div>
           )}
 
+          {/* End session button */}
           <button onClick={handleEndSession} disabled={ending} style={{
             display: "flex", alignItems: "center", gap: 6,
-            padding: "6px 12px", borderRadius: 10, cursor: "pointer",
-            background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)",
-            color: "#f87171", fontSize: 12, fontWeight: 500, fontFamily: "inherit",
+            padding: "6px 14px", borderRadius: 10, cursor: "pointer",
+            background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)",
+            color: "#f87171", fontSize: 12, fontWeight: 600, fontFamily: "inherit",
             opacity: ending ? 0.5 : 1,
           }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-              <path d="M16 8l-8 8M8 8l8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="18" height="18" rx="2" fill="#f87171"/>
             </svg>
             {ending ? "Ending..." : "End Session"}
           </button>
         </div>
       </div>
+
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
 
       {/* Messages */}
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 24px" }}
