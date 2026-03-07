@@ -30,10 +30,10 @@ What I learned: Market research domain expertise, technical leadership, and buil
 Duration: 2020 - Present
 Role: Lead Software Engineer / Team Lead
 What I do:
-- Lead development on Keen — a platform offering psychic readings and spiritual guidance, connecting users with psychics, tarot readers, and astrologers via online chat and phone
+- Lead development features on Keen — a platform offering psychic readings and spiritual guidance, connecting users with psychics, tarot readers, and astrologers via online chat and phone
 - Architect and design scalable software solutions for the platform
 - Mentor junior developers and lead cross-functional teams
-- Manage centralized logging with Splunk and event tracking with Mixpanel
+- Built AI Integration projects 
 
 ## Why I Am Looking for a New Role
 After 6+ years at Ingenio growing into a Lead role, I am looking for a new challenge where I can apply my full-stack expertise and growing AI/RAG experience in a more innovative environment. I want to work on impactful products and continue evolving as a technical leader.

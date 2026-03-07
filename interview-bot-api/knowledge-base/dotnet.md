@@ -1,7 +1,7 @@
 # .NET Experience
 
 ## How Long & What Versions
-I have been working with .NET for 10+ years.
+I have been working with .NET for 12+ years.
 Started with .NET Framework in early career (2012), progressed through .NET Core, and now work with modern .NET versions.
 I am a Microsoft Certified Solutions Developer.
 

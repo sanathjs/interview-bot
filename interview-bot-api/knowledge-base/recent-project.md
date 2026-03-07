@@ -4,18 +4,21 @@
 Client/Company: Ingenio
 Duration: 2020 - Present (6+ years)
 My Role: Lead Software Engineer / Team Lead
-Team Size: Cross-functional team including designers, product managers, and developers
+Team Size: 20+ Cross-functional team including designers, product managers, QE and developers
 
-## What the Project Was About
-Keen is a consumer platform that connects users with psychics, tarot card readers, astrologers,
-and other spiritual advisors for online chat or phone consultations. The platform handles real-time
-advisor matching, session management, billing, loyalty rewards, and marketing campaigns at scale.
-It is an e-commerce style platform with high availability requirements.
+## What Is The Product
+Keen is a consumer platform that connects users with psychics, tarot card readers, astrologers, and other spiritual advisors for online chat or phone consultations. The platform handles real-time advisor matching, session management, billing, loyalty rewards, and marketing campaigns at scale. It is an e-commerce style platform with high availability requirements.
+
+## What I Built / What I Worked / Recent Projects
+- Semantic Search
+- JWT AUTH Migration from existing Session based AUTH 
+- Feedback Search
+- Third Party Partner inegration
 
 ## Tech Stack
 - Backend: .NET / .NET Core, C#, Web API, REST
-- Frontend: React, Next.js, TypeScript, Angular
-- Database: SQL Server
+- Frontend: React, Next.js, TypeScript
+- Database: SQL Server / PostGres SQL
 - Cloud: Microsoft Azure
 - CI/CD: TeamCity, Azure DevOps
 - Source Control: GitHub
@@ -32,7 +35,7 @@ It is an e-commerce style platform with high availability requirements.
 3. Integrated third-party platforms — Zinrelo for loyalty rewards, Iterable for marketing, Zendesk for support
 4. Established centralized logging with Splunk and event tracking with Mixpanel
 5. Mentored junior developers and led the engineering team
-6. Set up and maintained CI/CD pipelines using TeamCity and Azure DevOps
+
 
 ## The Biggest Challenge I Faced
 Integrating multiple third-party platforms (Zinrelo, Iterable, Zendesk, Content Stack) into a

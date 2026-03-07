@@ -1,13 +1,11 @@
 # AI Integration & RAG Pipeline Experience
 
 ## My AI Experience
-At Ingenio, I built a production RAG pipeline for the Keen platform — an advisor search system
-that matches users seeking psychic, tarot, and spiritual guidance with the most relevant advisors.
-The system handles all advisor profiles and combines semantic vector search with a structured
-attribute scoring engine to rank results in real time.
+At Ingenio, I designed and implemented a production-grade Retrieval-Augmented Search system for the Keen platform — a marketplace that connects users seeking psychic, tarot, and spiritual guidance with relevant advisors.
 
-I built this end-to-end in C# / .NET 8, integrating Azure OpenAI, PostgreSQL with pgvector,
-and a custom hybrid ranking algorithm.
+The system combines LLM-based query understanding, semantic vector search, and platform quality signals to rank advisors in real time. It processes thousands of advisor listings and returns the most relevant matches based on user intent, emotional tone, and advisor expertise.
+
+The solution was built end-to-end in C# / .NET 8, integrating Azure OpenAI, PostgreSQL with pgvector, and a custom hybrid ranking pipeline designed for low-latency production search.
 
 ---
 

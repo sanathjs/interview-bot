@@ -60,6 +60,11 @@ export default function Navbar() {
       <style>{`
         @media (max-width: 640px) {
           .navbar-chat-hide { display: none !important; }
+          .nav-link-label { display: none; }
+          .nav-links-row { gap: 2px !important; }
+        }
+        @media (min-width: 641px) {
+          .nav-link-label { display: inline; }
         }
       `}</style>
       <nav

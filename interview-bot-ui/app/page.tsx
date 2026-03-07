@@ -27,7 +27,8 @@ const C = {
 
 export default function HomePage() {
   const router = useRouter();
-  const [step, setStep]                       = useState<"choose" | "pin" | "interviewer">("choose");
+  const [step, setStep]                       = useState<"choose" | "pin" | "interviewer" | "admin-dashboard">("choose");
+  const [ingestStatus, setIngestStatus]       = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [pin, setPin]                         = useState("");
   const [pinError, setPinError]               = useState("");
   const [showPin, setShowPin]                 = useState(false);
@@ -41,11 +42,26 @@ export default function HomePage() {
       localStorage.setItem("ib_role", "admin");
       localStorage.removeItem("ib_interviewer_name");
       localStorage.removeItem("ib_company_name");
-      router.push("/chat");
+      setStep("admin-dashboard");
     } else {
       setPinError("Incorrect PIN. Try again.");
       setPin("");
     }
+  };
+
+  const handleIngest = async () => {
+    setIngestStatus("loading");
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5267";
+      const KEY     = process.env.NEXT_PUBLIC_ADMIN_INGEST_KEY || "";
+      const res     = await fetch(`${API_URL}/api/ingest`, {
+        method: "POST", headers: { "X-Admin-Key": KEY },
+      });
+      setIngestStatus(res.ok ? "ok" : "error");
+    } catch {
+      setIngestStatus("error");
+    }
+    setTimeout(() => setIngestStatus("idle"), 3000);
   };
 
   const handleInterviewerSubmit = () => {
@@ -374,6 +390,209 @@ export default function HomePage() {
                 Continue
               </button>
             </div>
+          </>
+        )}
+
+        {/* ── ADMIN DASHBOARD ── */}
+        {step === "admin-dashboard" && (
+          <>
+            <button onClick={() => { setStep("choose"); setPin(""); }}
+              style={backBtn}>← Back</button>
+
+            {/* Welcome row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+                border: "1.5px solid rgba(245,158,11,0.4)", overflow: "hidden",
+              }}>
+                <img src="/profile-avatar.jpg" alt="Sanath"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={e => {
+                    e.currentTarget.style.display = "none";
+                    if (e.currentTarget.parentElement) {
+                      e.currentTarget.parentElement.style.background = "rgba(245,158,11,0.15)";
+                      e.currentTarget.parentElement.innerHTML = `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#f59e0b">S</span>`;
+                    }
+                  }}
+                />
+              </div>
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: 0,
+                            fontFamily: "'Playfair Display', serif" }}>
+                  Welcome back, Sanath
+                </p>
+                <p style={{ fontSize: 12, color: "#34d399", margin: "2px 0 0", fontWeight: 500 }}>
+                  ● Admin access active
+                </p>
+              </div>
+            </div>
+
+            {/* Action cards */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+
+              {/* Chat */}
+              <button onClick={() => router.push("/chat")} style={{
+                display: "flex", alignItems: "center", gap: 14,
+                padding: "14px 16px", borderRadius: 16, border: "none",
+                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                cursor: "pointer", textAlign: "left", width: "100%", fontFamily: "inherit",
+                boxShadow: "0 0 24px rgba(245,158,11,0.2)",
+              }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+                  background: "rgba(255,255,255,0.15)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                          stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "white", margin: 0 }}>
+                    Test the Chat
+                  </p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", margin: "2px 0 0" }}>
+                    Try out the bot, check confidence scores
+                  </p>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+
+              {/* Sessions */}
+              <button onClick={() => router.push("/sessions")} style={{
+                display: "flex", alignItems: "center", gap: 14,
+                padding: "14px 16px", borderRadius: 16,
+                border: `1px solid ${C.border}`, background: C.input,
+                cursor: "pointer", textAlign: "left", width: "100%", fontFamily: "inherit",
+              }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+                  background: C.card,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke={C.subtle} strokeWidth="2"/>
+                    <polyline points="12 6 12 12 16 14" stroke={C.subtle} strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>
+                    Session History
+                  </p>
+                  <p style={{ fontSize: 12, color: C.muted, margin: "2px 0 0" }}>
+                    Browse past interviews and transcripts
+                  </p>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18l6-6-6-6" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+
+              {/* Prep */}
+              <button onClick={() => router.push("/prep")} style={{
+                display: "flex", alignItems: "center", gap: 14,
+                padding: "14px 16px", borderRadius: 16,
+                border: `1px solid ${C.border}`, background: C.input,
+                cursor: "pointer", textAlign: "left", width: "100%", fontFamily: "inherit",
+              }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+                  background: C.card,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" stroke={C.subtle} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" stroke={C.subtle} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>
+                    Prep Dashboard
+                  </p>
+                  <p style={{ fontSize: 12, color: C.muted, margin: "2px 0 0" }}>
+                    Review unanswered questions, update KB
+                  </p>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18l6-6-6-6" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+
+              {/* Re-ingest */}
+              <button
+                onClick={handleIngest}
+                disabled={ingestStatus === "loading"}
+                style={{
+                  display: "flex", alignItems: "center", gap: 14,
+                  padding: "14px 16px", borderRadius: 16,
+                  border: `1px solid ${
+                    ingestStatus === "ok"    ? "rgba(52,211,153,0.4)"  :
+                    ingestStatus === "error" ? "rgba(248,113,113,0.4)" :
+                    C.border
+                  }`,
+                  background: C.input,
+                  cursor: ingestStatus === "loading" ? "not-allowed" : "pointer",
+                  textAlign: "left", width: "100%", fontFamily: "inherit",
+                  opacity: ingestStatus === "loading" ? 0.7 : 1,
+                  transition: "border-color 0.2s",
+                }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+                  background: C.card,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    style={{ animation: ingestStatus === "loading" ? "spin 1s linear infinite" : "none" }}>
+                    <polyline points="23 4 23 10 17 10" stroke={
+                      ingestStatus === "ok"    ? "#34d399" :
+                      ingestStatus === "error" ? "#f87171" : C.subtle
+                    } strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" stroke={
+                      ingestStatus === "ok"    ? "#34d399" :
+                      ingestStatus === "error" ? "#f87171" : C.subtle
+                    } strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color:
+                    ingestStatus === "ok"    ? "#34d399" :
+                    ingestStatus === "error" ? "#f87171" : C.text,
+                    margin: 0 }}>
+                    {ingestStatus === "loading" ? "Ingesting KB..." :
+                     ingestStatus === "ok"      ? "✓ Ingested successfully" :
+                     ingestStatus === "error"   ? "✗ Ingest failed" :
+                     "Re-ingest Knowledge Base"}
+                  </p>
+                  <p style={{ fontSize: 12, color: C.muted, margin: "2px 0 0" }}>
+                    Run after adding or editing .md files
+                  </p>
+                </div>
+              </button>
+
+            </div>
+
+            {/* Sign out */}
+            <button onClick={() => {
+              localStorage.removeItem("ib_role");
+              setStep("choose");
+              setPin("");
+            }} style={{
+              marginTop: 20, background: "none", border: "none",
+              color: C.muted, fontSize: 12, cursor: "pointer",
+              fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5,
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              Sign out of admin
+            </button>
+
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </>
         )}
 

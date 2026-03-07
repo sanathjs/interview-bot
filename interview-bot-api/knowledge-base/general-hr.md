@@ -13,10 +13,9 @@ Strength 3 — Domain Breadth: I have worked across e-commerce, market research,
 and vehicle insurance. This means I can ramp up quickly in new domains and ask the right questions.
 
 ## What Is Your Greatest Weakness?
-I can sometimes go deep into technical problem-solving and lose track of time. I have learned
-to set timebox limits — if I haven't made progress on something in 30–45 minutes, I step back,
-document what I've tried, and bring it to the team. This has made me more efficient and a
-better collaborator.
+One weakness I’ve noticed in myself is that sometimes I jump into development too quickly instead of asking enough questions upfront. Earlier in my career, when I received the basic requirements for a feature, I would start building immediately to move things forward quickly. There were a few situations where I had already completed a large part of the implementation, but later the product priorities changed or the project was deprioritized, which meant the work didn’t end up being used.
+
+That experience helped me realize the importance of clarifying requirements, priorities, and long-term goals before investing significant development time. Over the past few years, I’ve been consciously improving this by asking more questions during planning discussions, validating assumptions with product managers, and confirming priorities before starting larger implementations.
 
 ## Why Do You Want to Work Here?
 I am looking for a role where I can apply my full-stack .NET expertise and growing AI/RAG
@@ -35,7 +34,7 @@ My go-to questions:
 I am currently open to work and can discuss availability based on the opportunity.
 
 ## Tell Me About Yourself (30-second version)
-I am Sanath Kumar, a Lead Software Engineer based in Bengaluru with 10+ years of experience
+I am Sanath Kumar, a Lead Software Engineer based in Bengaluru with 12+ years of experience
 in .NET full-stack development. I have worked across healthcare, market research, e-commerce,
 and insurance domains. Currently at Ingenio as a Lead Engineer, I am actively looking for my
 next challenge where I can combine my .NET expertise with AI-integrated application development.
@@ -49,3 +48,6 @@ Microsoft Certified Solutions Developer
 - Published: "Deploying Node.js application to Microsoft Azure"
 - Active on CodeProject: www.codeproject.com/Members/sanathjs
 - GitHub: github.com/sanathjs
+
+## Salary Expectations
+This is a confidential question i would leave this to sanath to answer personally
