@@ -132,7 +132,7 @@ public async Task<IActionResult> GetSessions()
         await _chat.AutoExpireStaleSessionsAsync();
 
         var sessions = await _chat.GetSessionsAsync();
-        return Ok(new { sessions });
+        return Ok(sessions);
     }
     catch (Exception ex)
     {

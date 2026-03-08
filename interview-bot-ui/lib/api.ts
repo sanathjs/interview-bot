@@ -24,9 +24,15 @@ export async function getUnanswered() {
 export async function getSessions() {
   const res = await fetch(`${API_URL}/api/sessions`);
   if (!res.ok) throw new Error("Failed to fetch sessions");
-  return res.json();
+  const data = await res.json();
+  // Backend returns { sessions: { sessions: [...] } } — unwrap both levels
+  const sessions = Array.isArray(data.sessions)
+    ? data.sessions
+    : Array.isArray(data.sessions?.sessions)
+    ? data.sessions.sessions
+    : [];
+  return { sessions };
 }
-
 // Used by /sessions/[id] transcript page (numeric DB id)
 export async function getSessionDetail(id: number) {
   const res = await fetch(`${API_URL}/api/sessions/${id}/detail`);
