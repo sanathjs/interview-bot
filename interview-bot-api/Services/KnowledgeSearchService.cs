@@ -362,7 +362,7 @@ public class KnowledgeSearchService
 
         if (file.Contains("career") &&
             new[] { "career","journey","worked at","companies","history",
-                    "work history","past jobs","walk me through" }
+                    "work history","past jobs" }
             .Any(k => q.Contains(k))) return 0.15;
 
         if (file.Contains("leadership") &&

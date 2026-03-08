@@ -116,7 +116,7 @@ public class ChatService
         var questionLower = request.Message.ToLower();
 
         var isCareerQuestion = new[] {
-            "career", "journey", "work history", "walk me through",
+            "career", "journey", "work history",
             "companies you worked", "previous companies"
         }.Any(k => questionLower.Contains(k));
 
