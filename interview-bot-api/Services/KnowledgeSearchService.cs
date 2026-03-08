@@ -12,7 +12,7 @@ public class KnowledgeSearchService
     private readonly EmbeddingService _embedding;
 
     private const double HighConfidence = 0.65;
-    private const double LowConfidence  = 0.58;
+    private const double LowConfidence  = 0.63;
 
     public KnowledgeSearchService(
         IConfiguration config,
@@ -25,41 +25,72 @@ public class KnowledgeSearchService
     }
 
     // ================================================================
-    // MAIN SEARCH — embed question → pgvector → boost → return top K
+    // MAIN SEARCH
+    //
+    // Strategy:
+    // 1. Extract keywords from the question
+    // 2. TAG SEARCH — vector search filtered to chunks whose tags
+    //    overlap with those keywords. If matches found → use them.
+    // 3. FALLBACK — full vector search across all chunks if no tag hits.
+    //    (Handles broad/personal questions: career, intro, leadership.)
+    // 4. Apply file boost on fallback path only.
     // ================================================================
     public async Task<(List<SearchResult> Results, double TopScore)>
         SearchAsync(string question, int topK = 10)
     {
-        // 1. Embed the question via HuggingFace
         var queryVector = await _embedding.GetEmbeddingAsync(question);
-
         if (queryVector.Length == 0)
             return (new List<SearchResult>(), 0.0);
 
-        // 2. Fetch top 15 candidates from pgvector
-        var results = await SearchPgVectorAsync(queryVector, 15);
+        var queryKeywords = ExtractQueryKeywords(question);
+
+        _logger.LogInformation(
+            "--- SEARCH: '{Q}' | keywords: [{K}] ---",
+            question, string.Join(", ", queryKeywords));
+
+        List<SearchResult> results;
+        bool usedTagSearch = false;
+
+        if (queryKeywords.Count > 0)
+        {
+            results = await SearchWithTagsAsync(queryVector, queryKeywords, topK);
+
+            if (results.Count > 0)
+            {
+                usedTagSearch = true;
+                _logger.LogInformation("--- TAG SEARCH: {Count} chunks matched ---", results.Count);
+            }
+            else
+            {
+                _logger.LogInformation("--- TAG SEARCH: no matches, falling back to full search ---");
+                results = await SearchPgVectorAsync(queryVector, 15);
+            }
+        }
+        else
+        {
+            results = await SearchPgVectorAsync(queryVector, 15);
+        }
 
         if (results.Count == 0)
             return (results, 0.0);
 
-        var questionLower = question.ToLower();
-
-        _logger.LogInformation("--- BOOST DEBUG for: {Q} ---", question);
-
-        // 3. Apply file boost
-        foreach (var result in results)
+        // Apply file boost only on the fallback full-search path
+        if (!usedTagSearch)
         {
-            var scoreBefore = result.Similarity;
-            var fileBoost   = GetFileBoost(questionLower, result.SourceFile);
-            result.Similarity = Math.Min(1.0, result.Similarity + fileBoost);
+            var questionLower = question.ToLower();
+            foreach (var result in results)
+            {
+                var scoreBefore = result.Similarity;
+                var boost       = GetFileBoost(questionLower, result.SourceFile);
+                result.Similarity = Math.Min(1.0, result.Similarity + boost);
 
-            _logger.LogInformation(
-                "  {File} | {Title} | {Before:F3} + {Boost:F3} = {After:F3}",
-                result.SourceFile, result.SectionTitle,
-                scoreBefore, fileBoost, result.Similarity);
+                _logger.LogInformation(
+                    "  BOOST {File} | {Title} | {Before:F3}+{Boost:F3}={After:F3}",
+                    result.SourceFile, result.SectionTitle,
+                    scoreBefore, boost, result.Similarity);
+            }
         }
 
-        // 4. Re-sort after boosting and take topK
         results = results
             .OrderByDescending(r => r.Similarity)
             .Take(topK)
@@ -68,8 +99,8 @@ public class KnowledgeSearchService
         var topScore = results[0].Similarity;
 
         _logger.LogInformation(
-            "--- TOP after boost: {Score:F3} from {File} ---",
-            topScore, results[0].SourceFile);
+            "--- TOP: {Score:F3} | {File} | {Title} | tagSearch={Used} ---",
+            topScore, results[0].SourceFile, results[0].SectionTitle, usedTagSearch);
 
         return (results, topScore);
     }
@@ -82,19 +113,77 @@ public class KnowledgeSearchService
     }
 
     // ================================================================
-    // PGVECTOR SEARCH
+    // TAG-FILTERED VECTOR SEARCH
+    //
+    // Finds only chunks whose tags array overlaps (&&) with the query
+    // keywords, then ranks those by vector similarity.
+    //
+    // "var vs dynamic" → keywords ["var","dynamic"]
+    // → only chunks tagged with "var" or "dynamic" are candidates
+    // → "string vs StringBuilder" chunk is never even considered
+    // ================================================================
+    private async Task<List<SearchResult>> SearchWithTagsAsync(
+        float[] queryVector, List<string> keywords, int topK)
+    {
+        var results = new List<SearchResult>();
+        try
+        {
+            var dsb = new NpgsqlDataSourceBuilder(_connectionString);
+            dsb.UseVector();
+            await using var ds   = dsb.Build();
+            await using var conn = await ds.OpenConnectionAsync();
+
+            var sql = @"
+                SELECT
+                    id,
+                    source_file,
+                    section_title,
+                    chunk_text,
+                    1 - (embedding <=> @queryVec::vector) AS similarity
+                FROM knowledge_chunks
+                WHERE embedding IS NOT NULL
+                  AND tags && @keywords
+                ORDER BY embedding <=> @queryVec::vector
+                LIMIT @topK";
+
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("queryVec", new Vector(queryVector));
+            cmd.Parameters.AddWithValue("keywords", keywords.ToArray());
+            cmd.Parameters.AddWithValue("topK",     topK);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                results.Add(new SearchResult
+                {
+                    ChunkId      = reader.GetInt32(0),
+                    SourceFile   = reader.GetString(1),
+                    SectionTitle = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                    ChunkText    = reader.GetString(3),
+                    Similarity   = reader.GetDouble(4)
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Tag-filtered search failed");
+        }
+        return results;
+    }
+
+    // ================================================================
+    // FULL VECTOR SEARCH (fallback for broad/personal questions)
     // ================================================================
     private async Task<List<SearchResult>> SearchPgVectorAsync(
         float[] queryVector, int topK)
     {
         var results = new List<SearchResult>();
-
         try
         {
-            var dataSourceBuilder = new NpgsqlDataSourceBuilder(_connectionString);
-            dataSourceBuilder.UseVector();
-            await using var dataSource = dataSourceBuilder.Build();
-            await using var conn = await dataSource.OpenConnectionAsync();
+            var dsb = new NpgsqlDataSourceBuilder(_connectionString);
+            dsb.UseVector();
+            await using var ds   = dsb.Build();
+            await using var conn = await ds.OpenConnectionAsync();
 
             var sql = @"
                 SELECT
@@ -110,18 +199,18 @@ public class KnowledgeSearchService
 
             await using var cmd = new NpgsqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("queryVec", new Vector(queryVector));
-            cmd.Parameters.AddWithValue("topK", topK);
+            cmd.Parameters.AddWithValue("topK",     topK);
 
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
                 results.Add(new SearchResult
                 {
-                    ChunkId       = reader.GetInt32(0),
-                    SourceFile    = reader.GetString(1),
-                    SectionTitle  = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                    ChunkText     = reader.GetString(3),
-                    Similarity    = reader.GetDouble(4)
+                    ChunkId      = reader.GetInt32(0),
+                    SourceFile   = reader.GetString(1),
+                    SectionTitle = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                    ChunkText    = reader.GetString(3),
+                    Similarity   = reader.GetDouble(4)
                 });
             }
         }
@@ -129,97 +218,91 @@ public class KnowledgeSearchService
         {
             _logger.LogError(ex, "pgvector search failed");
         }
-
         return results;
     }
 
     // ================================================================
-    // FILE BOOST — adds score bonus when question keywords match file
+    // KEYWORD EXTRACTION
+    // Normalises .NET terms so they match what ingestion stores.
+    // "C#" → "csharp",  ".NET" → "dotnet"
+    // ================================================================
+    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "what","the","is","are","was","were","and","or","in","of",
+        "to","for","a","an","be","been","have","has","had","do",
+        "does","did","how","why","when","where","which","who",
+        "that","this","these","those","with","from","by","on",
+        "at","its","it","you","your","we","our","they","their",
+        "can","could","would","should","will","not","but","any",
+        "all","use","used","using","between","difference","about",
+        "give","example","explain","tell","me","please","define"
+    };
+
+    private List<string> ExtractQueryKeywords(string question)
+    {
+        var normalised = question
+            .ToLower()
+            .Replace("c#", "csharp")
+            .Replace(".net", "dotnet");
+
+        return normalised
+            .Split(new[] { ' ', '?', '.', ',', '(', ')', '/', '\'', '"', ':', ';', '!' },
+                   StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length > 1)
+            .Where(w => !StopWords.Contains(w))
+            .Where(w => !w.All(char.IsDigit))
+            .Distinct()
+            .ToList();
+    }
+
+    // ================================================================
+    // FILE BOOST — only used on the fallback full-search path
+    // Narrow keywords only — broad terms like ".net" / "c#" removed
+    // to avoid inflating scores for unrelated chunks in the same domain
     // ================================================================
     private double GetFileBoost(string question, string sourceFile)
     {
         var file = sourceFile.ToLower();
         var q    = question.ToLower();
 
-        if (file.Contains("ai-rag"))
-        {
-            var keywords = new[] {
-                "rag", "ai", "vector", "embedding", "llm",
-                "semantic", "pipeline", "retrieval", "pgvector",
-                "machine learning", "azure openai", "ollama",
-                "artificial intelligence", "knowledge base",
-                "used ai", "used rag", "ai in", "rag in",
-                "ai project", "rag project", "ai experience",
-                "language model", "generative", "chatbot",
-                "neural", "deep learning", "nlp"
-            };
-            if (keywords.Any(k => q.Contains(k))) return 0.20;
-        }
+        if (file.Contains("ai-rag") &&
+            new[] { "rag","vector","embedding","llm","semantic search","retrieval",
+                    "pgvector","azure openai","ai project","language model","nlp" }
+            .Any(k => q.Contains(k))) return 0.20;
 
-        if (file.Contains("introduction"))
-        {
-            var keywords = new[] {
-                "yourself", "introduce", "who are you",
-                "background", "about you", "overview", "tell me about"
-            };
-            if (keywords.Any(k => q.Contains(k))) return 0.15;
-        }
+        if (file.Contains("introduction") &&
+            new[] { "yourself","introduce","who are you","about you","tell me about" }
+            .Any(k => q.Contains(k))) return 0.15;
 
-        if (file.Contains("career"))
-        {
-            var keywords = new[] {
-                "career", "journey", "experience", "worked",
-                "companies", "history", "previous", "years",
-                "work history", "past jobs"
-            };
-            if (keywords.Any(k => q.Contains(k))) return 0.15;
-        }
+        if (file.Contains("career") &&
+            new[] { "career","journey","worked at","companies","history",
+                    "work history","past jobs","walk me through" }
+            .Any(k => q.Contains(k))) return 0.15;
 
-        if (file.Contains("dotnet"))
-        {
-            var keywords = new[] {
-                ".net", "dotnet", "c#", "csharp", "asp.net",
-                "entity framework", "design pattern", "microservice",
-                "rest api", "web api"
-            };
-            if (keywords.Any(k => q.Contains(k))) return 0.15;
-        }
+        if (file.Contains("leadership") &&
+            new[] { "led a team","leadership","mentored","managed a team",
+                    "led people","team lead" }
+            .Any(k => q.Contains(k))) return 0.15;
 
-        if (file.Contains("leadership"))
-        {
-            var keywords = new[] {
-                "lead", "team", "mentor", "manage",
-                "junior", "architect", "decision", "leadership"
-            };
-            if (keywords.Any(k => q.Contains(k))) return 0.15;
-        }
+        if (file.Contains("recent-project") &&
+            new[] { "recent project","current project","keen",
+                    "ingenio","latest project" }
+            .Any(k => q.Contains(k))) return 0.15;
 
-        if (file.Contains("recent-project"))
-        {
-            var keywords = new[] {
-                "recent project", "current project", "keen",
-                "ingenio", "what are you working", "latest project"
-            };
-            if (keywords.Any(k => q.Contains(k))) return 0.15;
-        }
+        if (file.Contains("general-hr") &&
+            new[] { "strength","weakness","why are you","salary",
+                    "notice","goal","motivat","hobby" }
+            .Any(k => q.Contains(k))) return 0.15;
 
-        if (file.Contains("general-hr"))
-        {
-            var keywords = new[] {
-                "strength", "weakness", "why", "salary",
-                "notice", "join", "goal", "motivate", "hobby"
-            };
-            if (keywords.Any(k => q.Contains(k))) return 0.15;
-        }
+        if (file.Contains("challenge") &&
+            new[] { "challenge","difficult","problem you faced",
+                    "tough","hard situation","conflict" }
+            .Any(k => q.Contains(k))) return 0.15;
 
-        if (file.Contains("challenge"))
-        {
-            var keywords = new[] {
-                "challenge", "difficult", "problem", "obstacle",
-                "tough", "hard situation", "conflict"
-            };
-            if (keywords.Any(k => q.Contains(k))) return 0.15;
-        }
+        if (file.Contains("system-design") &&
+            new[] { "design","scale","system","rate limit","notification",
+                    "url shortener","chat system","high availability" }
+            .Any(k => q.Contains(k))) return 0.15;
 
         return 0.0;
     }
