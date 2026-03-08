@@ -197,17 +197,24 @@ export default function ChatPage() {
 
   // ── Architecture chip — inject card locally, no API call ──────────────────
   const handleArchitectureChip = (chip: string) => {
-    // Try exact match first, then fuzzy match in case of encoding differences
     const trimmed = chip.trim();
-    let projectId = ARCHITECTURE_CHIPS[trimmed];
+    // Map "show architecture" chips to project IDs
+    const SHOW_ARCH_MAP: Record<string, number> = {
+      "📐 Show architecture: Advisor Search":  1,
+      "📐 Show architecture: Feedback Search": 2,
+      "📐 Show architecture: Interview Bot":   3,
+      "📐 Show architecture: JWT Migration":   4,
+      "📐 Show architecture: Integrations":    5,
+    };
+    let projectId = SHOW_ARCH_MAP[trimmed];
     if (!projectId) {
-      // Fallback: find by partial match on the label text
-      const entry = Object.entries(ARCHITECTURE_CHIPS).find(([key]) =>
-        trimmed.includes("Advisor Search") && key.includes("Advisor Search") ||
-        trimmed.includes("Feedback Search") && key.includes("Feedback Search") ||
-        trimmed.includes("Interview Bot") && key.includes("Interview Bot") ||
-        trimmed.includes("JWT") && key.includes("JWT") ||
-        trimmed.includes("Integration") && key.includes("Integration")
+      // Fuzzy fallback
+      const entry = Object.entries(SHOW_ARCH_MAP).find(([key]) =>
+        (trimmed.includes("Advisor Search") && key.includes("Advisor Search")) ||
+        (trimmed.includes("Feedback Search") && key.includes("Feedback Search")) ||
+        (trimmed.includes("Interview Bot") && key.includes("Interview Bot")) ||
+        (trimmed.includes("JWT") && key.includes("JWT")) ||
+        (trimmed.includes("Integration") && key.includes("Integration"))
       );
       projectId = entry?.[1] ?? 0;
     }
@@ -563,15 +570,9 @@ export default function ChatPage() {
               onFeedback={handleFeedback}
               onFollowUp={(q) => {
                   const trimmedQ = q.trim();
-                  const isArchChip = ARCHITECTURE_CHIPS[trimmedQ] ||
-                    Object.keys(ARCHITECTURE_CHIPS).some(k =>
-                      (trimmedQ.includes("Advisor Search") && k.includes("Advisor Search")) ||
-                      (trimmedQ.includes("Feedback Search") && k.includes("Feedback Search")) ||
-                      (trimmedQ.includes("Interview Bot") && k.includes("Interview Bot")) ||
-                      (trimmedQ.includes("JWT") && k.includes("JWT")) ||
-                      (trimmedQ.includes("Integration") && k.includes("Integration"))
-                    );
-                  if (isArchChip) { handleArchitectureChip(trimmedQ); }
+                  // Only intercept "show architecture" chips — project name chips go to API
+                  const isShowArch = trimmedQ.startsWith("📐 Show architecture");
+                  if (isShowArch) { handleArchitectureChip(trimmedQ); }
                   else { setChatStarted(true); setUsedFollowUps(prev => new Set([...prev, q])); handleSend(q); }
                 }}
             />

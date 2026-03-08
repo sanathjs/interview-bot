@@ -232,29 +232,29 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
             var archChip = (questionLow.Contains("semantic") && questionLow.Contains("search")) ||
                            (questionLow.Contains("advisor search")) ||
                            (questionLow.Contains("project 1"))
-                ? "🔍 Architecture: Advisor Search"
+                ? "📐 Show architecture: Advisor Search"
 
                 : (questionLow.Contains("feedback") && questionLow.Contains("search")) ||
                   (questionLow.Contains("project 2"))
-                ? "💬 Architecture: Feedback Search"
+                ? "📐 Show architecture: Feedback Search"
 
                 : (questionLow.Contains("interview bot")) ||
                   (questionLow.Contains("project 3")) ||
                   (questionLow.Contains("this bot")) ||
                   (questionLow.Contains("chatbot") && questionLow.Contains("personal"))
-                ? "🤖 Architecture: Interview Bot"
+                ? "📐 Show architecture: Interview Bot"
 
                 : (questionLow.Contains("jwt")) ||
                   (questionLow.Contains("authentication")) ||
                   (questionLow.Contains("auth migration")) ||
                   (questionLow.Contains("project 4"))
-                ? "🔐 Architecture: JWT Migration"
+                ? "📐 Show architecture: JWT Migration"
 
                 : (questionLow.Contains("zinrelo") || questionLow.Contains("iterable") ||
                    questionLow.Contains("zendesk") || questionLow.Contains("integration") ||
                    questionLow.Contains("third-party") || questionLow.Contains("third party") ||
                    questionLow.Contains("project 5"))
-                ? "🔗 Architecture: Integrations"
+                ? "📐 Show architecture: Integrations"
 
                 : null;
 

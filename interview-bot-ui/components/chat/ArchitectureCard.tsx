@@ -400,11 +400,11 @@ export default function ArchitectureCard({ projectId }: { projectId: number }) {
 // Use this in chat/page.tsx to detect if a follow-up is an architecture chip
 
 export const ARCHITECTURE_CHIPS: Record<string, number> = {
-  "🔍 Architecture: Advisor Search":  1,
-  "💬 Architecture: Feedback Search": 2,
-  "🤖 Architecture: Interview Bot":   3,
-  "🔐 Architecture: JWT Migration":   4,
-  "🔗 Architecture: Integrations":    5,
+  "📐 Show architecture: Advisor Search":  1,
+  "📐 Show architecture: Feedback Search": 2,
+  "📐 Show architecture: Interview Bot":   3,
+  "📐 Show architecture: JWT Migration":   4,
+  "📐 Show architecture: Integrations":    5,
 };
 
 export const PROJECT_MENU_FOLLOWUPS = Object.keys(ARCHITECTURE_CHIPS);
