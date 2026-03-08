@@ -1,10 +1,19 @@
 # Introduction / About Me
 
 ## Who I Am
-My name is Sanath Kumar J S. I am a .NET full-stack developer with 12+ years of experience building enterprise web applications.
-Currently I’m working at Ingenio as a Lead Software Engineer, where I work on a platform that connects users with advisors for chat and call consultations. My work involves backend architecture, microservices, API development, and improving system reliability, while also mentoring engineers on the team.
-Although my core strength is backend development, I’ve also worked with Angular, React, and Next.js, which helps me design APIs that work efficiently with modern frontends.
-Recently, I’ve been exploring AI integrations such as RAG pipelines, semantic search, and LLM-based features, which I find very exciting because they combine backend engineering with modern AI capabilities.
+I'm Sanath Kumar J S, a Lead Software Engineer with 12+ years of experience 
+building enterprise applications primarily in .NET and C#. I'm currently at 
+Ingenio in Bengaluru, working on backend architecture, microservices, and 
+AI-powered search systems. My core strength is backend engineering but I'm 
+comfortable across the full stack — I've shipped production systems in Angular, 
+React, and Next.js alongside my .NET work.
+
+What makes my profile a bit different from most senior .NET engineers is that 
+I've moved beyond traditional backend work into applied AI. I've built two 
+production RAG pipelines end to end — the Keen advisor search system at Ingenio 
+using Azure OpenAI and pgvector, and this interview bot you're talking to right 
+now. Both are live, both handle real traffic, both built entirely by me. I'm not 
+exploring AI — I'm shipping it.
 I am based in Bengaluru, India.
 
 ## What I Specialize In / Core Specialization

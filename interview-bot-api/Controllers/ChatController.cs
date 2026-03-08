@@ -119,21 +119,27 @@ public async Task<IActionResult> DeleteUnanswered(int id)
 
 // Add both of these inside ChatController, alongside your existing endpoints
 
-// ================================================================
-// GET /api/sessions — list all sessions
-// ================================================================
+// ── 2. GET SESSIONS — auto-expires stale active sessions ─────────────────────
+// Sessions stuck as "active" for more than 2 hours are auto-marked completed.
+// This is the server-side safety net for when ALL client-side signals fail
+// (killed browser process, network drop, device crash, etc.)
+
 [HttpGet("sessions")]
 public async Task<IActionResult> GetSessions()
 {
     try
     {
-        var response = await _chat.GetSessionsAsync();
-        return Ok(response);
+        // Auto-expire sessions active for more than 2 hours before fetching
+        // This runs fast — it's a single UPDATE with a WHERE clause + index on started_at
+        await _chat.AutoExpireStaleSessionsAsync();
+
+        var sessions = await _chat.GetSessionsAsync();
+        return Ok(new { sessions });
     }
     catch (Exception ex)
     {
-        _logger.LogError(ex, "Sessions fetch error");
-        return StatusCode(500, new { error = "Something went wrong" });
+        _logger.LogError(ex, "Error fetching sessions");
+        return StatusCode(500, new { error = "Failed to fetch sessions" });
     }
 }
 
@@ -182,20 +188,29 @@ public async Task<IActionResult> UpdateSessionDetails(
     }
 }
 
-// POST /api/sessions/{sessionCode}/end
-// Called when interviewer clicks End Session
+// ── 1. END SESSION endpoint ───────────────────────────────────────────────────
+// Handles ALL three ways a session can end:
+//   a) Manual "End Session" button  → JSON POST
+//   b) Page unload / tab close      → sendBeacon (text/plain, no body)
+//   c) SPA navigation away          → fetch with keepalive:true
+//   d) Tab hidden / phone locked    → sendBeacon from visibilitychange
+//
+// IMPORTANT: Do NOT use [FromBody] — sendBeacon sends Content-Type: text/plain
+// with no JSON body, so [FromBody] will cause a 400 on beacon requests.
+
 [HttpPost("sessions/{sessionCode}/end")]
 public async Task<IActionResult> EndSession(string sessionCode)
 {
     try
     {
         await _chat.EndSessionAsync(sessionCode);
-        return Ok(new { message = "Session ended ✅" });
+        return Ok(new { message = "Session ended", sessionCode });
     }
     catch (Exception ex)
     {
-        _logger.LogError(ex, "EndSession error for {Code}", sessionCode);
-        return StatusCode(500, new { error = "Something went wrong" });
+        _logger.LogError(ex, "Error ending session {SessionCode}", sessionCode);
+        // Still return 200 — client doesn't need to retry on partial failures
+        return Ok(new { message = "Session end attempted", sessionCode });
     }
 }
 
