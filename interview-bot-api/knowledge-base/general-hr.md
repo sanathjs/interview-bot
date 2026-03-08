@@ -12,6 +12,13 @@ contributor into a Lead Engineer managing complex cross-functional delivery.
 Strength 3 — Domain Breadth: I have worked across e-commerce, market research, US healthcare,
 and vehicle insurance. This means I can ramp up quickly in new domains and ask the right questions.
 
+Strength 4 — Applied AI Engineering: I do not just understand AI concepts — I have shipped
+production RAG systems. At Ingenio I built two: a semantic advisor search pipeline and a
+feedback search system over 100,000+ reviews, both using Azure OpenAI and pgvector. Outside
+work I built this interview bot entirely from scratch. I bridge the gap between AI research
+and real engineering — I know how to make these systems fast, reliable, and cost-effective
+in production, including graceful degradation when AI services go down.
+
 ## What Is Your Greatest Weakness?
 One weakness I’ve noticed in myself is that sometimes I jump into development too quickly instead of asking enough questions upfront. Earlier in my career, when I received the basic requirements for a feature, I would start building immediately to move things forward quickly. There were a few situations where I had already completed a large part of the implementation, but later the product priorities changed or the project was deprioritized, which meant the work didn’t end up being used.
 

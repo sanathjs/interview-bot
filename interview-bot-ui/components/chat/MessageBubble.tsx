@@ -83,10 +83,28 @@ function SourceBanner({
   // Respect the toggle — hide entirely if off
   if (!showSourceDetails) return null;
   if (!answerSource || answerSource === "greeting") return null;
+  if (answerSource === "not_found") return (
+    <div style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px",
+                  background:"rgba(239,68,68,0.08)", borderRadius:10,
+                  border:"1px solid rgba(239,68,68,0.2)" }}>
+      <span style={{ width:7, height:7, borderRadius:"50%", background:"#ef4444", flexShrink:0 }} />
+      <span style={{ fontSize:12, color:"#ef4444", fontWeight:500 }}>Not in Knowledge Base</span>
+    </div>
+  );
+  if (answerSource === "llm_general") return (
+    <div style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px",
+                  background:"rgba(139,92,246,0.08)", borderRadius:10,
+                  border:"1px solid rgba(139,92,246,0.2)" }}>
+      <span style={{ width:7, height:7, borderRadius:"50%", background:"#8b5cf6", flexShrink:0 }} />
+      <span style={{ fontSize:12, color:"#8b5cf6", fontWeight:500 }}>Answered from General LLM Knowledge</span>
+    </div>
+  );
 
-  const isKB      = answerSource === "knowledge_base";
-  const isLLM     = answerSource === "fallback_ai";
-  const isUnknown = answerSource === "unanswered";
+  const isKB       = answerSource === "knowledge_base";
+  const isLLM      = answerSource === "fallback_ai";
+  const isUnknown  = answerSource === "unanswered";
+  const isNotFound = answerSource === "not_found";
+  const isLLMGen   = answerSource === "llm_general";
 
   const dotColor = isKB ? "#34d399" : isLLM ? "#818cf8" : C.amber;
   const bg       = isKB ? "rgba(52,211,153,0.07)" : isLLM ? "rgba(99,102,241,0.07)" : "rgba(245,158,11,0.07)";
@@ -182,6 +200,8 @@ export default function MessageBubble({
   const isGreeting     = message.answerSource === "greeting";
   const isFallback     = message.answerSource === "fallback_ai";
   const isArchitecture = message.answerSource === "architecture";
+  const isNotFound     = message.answerSource === "not_found";
+  const isLLMGen       = message.answerSource === "llm_general";
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [copied, setCopied]     = useState(false);
 
@@ -344,23 +364,28 @@ export default function MessageBubble({
               <p style={{ fontSize: 11, color: "#4a4a58", margin: 0, padding: "0 2px" }}>
                 Suggested follow-ups
               </p>
-              {available.map((q, i) => (
-                <button key={i} onClick={() => onFollowUp?.(q)} style={{
-                  textAlign: "left", fontSize: 12, padding: "8px 12px", borderRadius: 10,
-                  cursor: "pointer", width: "100%", background: C.input,
-                  border: `1px solid ${C.border}`, color: C.subtle, fontFamily: "inherit",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(245,158,11,0.3)";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#fbbf24";
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = C.border;
-                  (e.currentTarget as HTMLButtonElement).style.color = C.subtle;
-                }}>
-                  → {q}
-                </button>
-              ))}
+              {available.map((q, i) => {
+                const isLLMAction = q === "Use LLM to answer";
+                return (
+                  <button key={i} onClick={() => onFollowUp?.(q)} style={{
+                    textAlign: "left", fontSize: 12, padding: "8px 12px", borderRadius: 10,
+                    cursor: "pointer", width: "100%", fontFamily: "inherit",
+                    background: isLLMAction ? "rgba(245,158,11,0.1)" : C.input,
+                    border: `1px solid ${isLLMAction ? "rgba(245,158,11,0.4)" : C.border}`,
+                    color: isLLMAction ? "#fbbf24" : C.subtle,
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = isLLMAction ? "rgba(245,158,11,0.7)" : "rgba(245,158,11,0.3)";
+                    (e.currentTarget as HTMLButtonElement).style.color = "#fbbf24";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = isLLMAction ? "rgba(245,158,11,0.4)" : C.border;
+                    (e.currentTarget as HTMLButtonElement).style.color = isLLMAction ? "#fbbf24" : C.subtle;
+                  }}>
+                    {isLLMAction ? "✨ " : "→ "}{q}
+                  </button>
+                );
+              })}
             </div>
           );
         })()}

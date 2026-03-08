@@ -2,7 +2,7 @@ export interface Message {
   id: string;
   role: "interviewer" | "bot";
   text: string;
-  answerSource?: "knowledge_base" | "unanswered" | "fallback_ai" | "greeting" | "architecture";
+  answerSource?: "knowledge_base" | "unanswered" | "fallback_ai" | "greeting" | "architecture" | "not_found" | "llm_general";
   architectureProject?: number; // 1-5 maps to PROJECTS array
   confidenceScore?: number;
   sources?: SourceChunk[];

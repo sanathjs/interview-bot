@@ -39,6 +39,24 @@ public class ChatService
     {
         await EnsureSessionExistsAsync(request.SessionId);
 
+        // ── Intercept "use llm" replies ──────────────────────────────────────
+        // When user clicks "Use LLM to answer" after a not_found response,
+        // fetch the last unanswered question and answer with general LLM knowledge.
+        var normalised = request.Message.Trim().ToLower();
+        if (normalised == "use llm to answer" || normalised == "use llm" ||
+            normalised == "yes use llm" || normalised == "use general knowledge")
+        {
+            var lastQuestion = await GetLastUnansweredQuestionAsync(request.SessionId);
+            if (lastQuestion != null)
+            {
+                var llmOnlyResponse = await HandleLlmGeneralAsync(request, lastQuestion);
+                await SaveMessageAsync(
+                    request.SessionId, "bot", llmOnlyResponse.Answer, null,
+                    llmOnlyResponse.AnswerSource, "groq");
+                return llmOnlyResponse;
+            }
+        }
+
         var questionMsgId = await SaveMessageAsync(
             request.SessionId, "interviewer", request.Message, null, null, null);
 
@@ -186,6 +204,11 @@ CRITICAL RULES:
    use the CONVERSATION HISTORY to understand the context and respond accordingly.
    Short replies like 'yes', 'tell me more', 'elaborate' should continue
    the previous topic naturally.
+10. CRITICAL: If the CONTEXT does not contain enough information to answer
+    this specific question accurately, respond with exactly:
+    ""I don't have detailed notes on that specific topic in my knowledge base
+    right now — Sanath can answer this one directly.""
+    Do NOT use general knowledge to fill gaps.
 
 FORMATTING RULES — apply ONLY if the question matches:
 - If question asks about career journey, work history, or companies worked at:
@@ -194,8 +217,8 @@ FORMATTING RULES — apply ONLY if the question matches:
   → One line per company: Company (years) — Role — one key thing
   → End with one sentence about what you are looking for next
 
- - When mentioning AI experience, always say 'I have built' or 'I have shipped' 
- — never 'I am exploring' or 'I am excited about'. The work is done, not planned.
+- When mentioning AI experience, always say 'I have built' or 'I have shipped'
+  — never 'I am exploring' or 'I am excited about'. The work is done, not planned.
 
 - If question asks about a specific topic (RAG, .NET, design patterns,
   leadership, challenges, strengths):
@@ -205,7 +228,6 @@ FORMATTING RULES — apply ONLY if the question matches:
 
 - If question is an introduction:
   → 3-4 sentences max, high level only
-  
 
 {historySection}CONTEXT FROM KNOWLEDGE BASE:
 {context}
@@ -224,43 +246,39 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
         {
             var questionLow = request.Message.ToLower();
 
-            // ── Project menu response → show 5 project picker chips ──────────
             var isProjectMenu = answer.Contains("Which one would you like me to go deeper on");
 
-            // ── Project-specific answer → detect which project and inject arch chip ──
-            // Maps keywords in the question to the exact chip label used in ArchitectureCard.tsx
             var archChip = (questionLow.Contains("semantic") && questionLow.Contains("search")) ||
-                           (questionLow.Contains("advisor search")) ||
-                           (questionLow.Contains("project 1"))
+                           questionLow.Contains("advisor search") ||
+                           questionLow.Contains("project 1")
                 ? "📐 Show architecture: Advisor Search"
 
                 : (questionLow.Contains("feedback") && questionLow.Contains("search")) ||
-                  (questionLow.Contains("project 2"))
+                  questionLow.Contains("project 2")
                 ? "📐 Show architecture: Feedback Search"
 
-                : (questionLow.Contains("interview bot")) ||
-                  (questionLow.Contains("project 3")) ||
-                  (questionLow.Contains("this bot")) ||
+                : questionLow.Contains("interview bot") ||
+                  questionLow.Contains("project 3") ||
+                  questionLow.Contains("this bot") ||
                   (questionLow.Contains("chatbot") && questionLow.Contains("personal"))
                 ? "📐 Show architecture: Interview Bot"
 
-                : (questionLow.Contains("jwt")) ||
-                  (questionLow.Contains("authentication")) ||
-                  (questionLow.Contains("auth migration")) ||
-                  (questionLow.Contains("project 4"))
+                : questionLow.Contains("jwt") ||
+                  questionLow.Contains("authentication") ||
+                  questionLow.Contains("auth migration") ||
+                  questionLow.Contains("project 4")
                 ? "📐 Show architecture: JWT Migration"
 
-                : (questionLow.Contains("zinrelo") || questionLow.Contains("iterable") ||
-                   questionLow.Contains("zendesk") || questionLow.Contains("integration") ||
-                   questionLow.Contains("third-party") || questionLow.Contains("third party") ||
-                   questionLow.Contains("project 5"))
+                : questionLow.Contains("zinrelo") || questionLow.Contains("iterable") ||
+                  questionLow.Contains("zendesk") || questionLow.Contains("integration") ||
+                  questionLow.Contains("third-party") || questionLow.Contains("third party") ||
+                  questionLow.Contains("project 5")
                 ? "📐 Show architecture: Integrations"
 
                 : null;
 
             if (isProjectMenu)
             {
-                // Project list was shown — return project picker chips
                 followUps = new List<string>
                 {
                     "🔍 Semantic Advisor Search",
@@ -272,15 +290,14 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
             }
             else
             {
-                // Normal follow-up generation via LLM
                 var followUpPrompt = $@"Based on this interview Q&A, suggest exactly 2 natural follow-up questions
-                    an interviewer might ask next. Return ONLY a JSON array of 2 strings, nothing else.
-                    Example: [""Can you elaborate on X?"", ""How did you handle Y?""]
+an interviewer might ask next. Return ONLY a JSON array of 2 strings, nothing else.
+Example: [""Can you elaborate on X?"", ""How did you handle Y?""]
 
-                Question: {request.Message}
-                Answer: {answer}
+Question: {request.Message}
+Answer: {answer}
 
-                Follow-ups (JSON array only):";
+Follow-ups (JSON array only):";
 
                 var followUpRaw = _llmProvider == "groq"
                     ? await CallGroqAsync(followUpPrompt)
@@ -292,11 +309,8 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
 
                 followUps = JsonSerializer.Deserialize<List<string>>(cleaned) ?? new();
 
-                // Append architecture chip if this answer was about a specific project
                 if (archChip != null)
-                {
                     followUps.Add(archChip);
-                }
             }
         }
         catch { /* follow-ups are non-critical */ }
@@ -318,9 +332,8 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
         };
     }
 
-
     // ================================================================
-    // LOW CONFIDENCE — store as unanswered, return polite message
+    // LOW CONFIDENCE — store as unanswered, offer LLM option
     // ================================================================
     private async Task<ChatResponse> HandleUnansweredAsync(
         ChatRequest request,
@@ -330,26 +343,61 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
         await SaveUnansweredQuestionAsync(request.SessionId, questionMsgId, request.Message);
 
         var answer =
-            "I'm sorry, I couldn't find that in my knowledge base right now. " +
-            "Sanath can answer you directly on this one.\n\n" +
-            "I've stored your question so Sanath can prepare a proper answer " +
-            "and come back to it next time! 📝\n\n" +
-            "Would you like Sanath to answer this live, " +
-            "or shall we move on to the next question?";
+            "I don't have that in my knowledge base right now — Sanath can answer this one directly.\n\n" +
+            "I've stored your question so Sanath can prepare a proper answer for next time! 📝\n\n" +
+            "Would you like me to try answering using general AI knowledge instead?";
 
         return new ChatResponse
         {
             Answer          = answer,
-            AnswerSource    = "unanswered",
+            AnswerSource    = "not_found",
             ConfidenceScore = topScore,
             UsedFallback    = false,
             SessionId       = request.SessionId,
-            Sources         = new List<SourceChunk>()
+            Sources         = new List<SourceChunk>(),
+            FollowUps       = new List<string>
+            {
+                "Use LLM to answer",
+                "Move on to the next question",
+            }
         };
     }
 
     // ================================================================
-    // FALLBACK — user chose to use AI directly
+    // LLM GENERAL — user chose to use AI general knowledge
+    // ================================================================
+    private async Task<ChatResponse> HandleLlmGeneralAsync(
+        ChatRequest request,
+        string question)
+    {
+        var prompt = $@"You are representing Sanath Kumar J S in a technical interview.
+Answer the following question using your general knowledge.
+Be concise, accurate, and speak confidently in first person as Sanath would.
+Keep the answer to 3-5 sentences.
+Do not mention that this is from general knowledge inside the answer itself.
+
+Question: {question}
+
+Answer:";
+
+        var answer = _llmProvider == "groq"
+            ? await CallGroqAsync(prompt)
+            : await CallOllamaAsync(prompt);
+
+        return new ChatResponse
+        {
+            Answer          = answer,
+            AnswerSource    = "llm_general",
+            ConfidenceScore = null,
+            UsedFallback    = true,
+            SessionId       = request.SessionId,
+            Sources         = new List<SourceChunk>(),
+            FollowUps       = new List<string>()
+        };
+    }
+
+    // ================================================================
+    // FALLBACK — user chose to use AI directly (existing UseFallback flag)
     // ================================================================
     private async Task<ChatResponse> HandleFallbackAsync(
         ChatRequest request,
@@ -558,13 +606,13 @@ ANSWER:";
             )
             RETURNING id", conn);
 
-        cmd.Parameters.AddWithValue("code",            sessionId);
-        cmd.Parameters.AddWithValue("seqNum",          seqNum);
-        cmd.Parameters.AddWithValue("role",            role);
-        cmd.Parameters.AddWithValue("message",         messageText);
-        cmd.Parameters.AddWithValue("confidence",      confidence.HasValue ? confidence.Value : DBNull.Value);
-        cmd.Parameters.AddWithValue("answerSource",    answerSource    ?? (object)DBNull.Value);
-        cmd.Parameters.AddWithValue("fallbackProvider",fallbackProvider ?? (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("code",             sessionId);
+        cmd.Parameters.AddWithValue("seqNum",           seqNum);
+        cmd.Parameters.AddWithValue("role",             role);
+        cmd.Parameters.AddWithValue("message",          messageText);
+        cmd.Parameters.AddWithValue("confidence",       confidence.HasValue ? confidence.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("answerSource",     answerSource     ?? (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("fallbackProvider", fallbackProvider ?? (object)DBNull.Value);
 
         return Convert.ToInt32(await cmd.ExecuteScalarAsync());
     }
@@ -588,6 +636,28 @@ ANSWER:";
         await cmd.ExecuteNonQueryAsync();
 
         _logger.LogInformation("Saved unanswered question: {Q}", questionText);
+    }
+
+    // Fetch the most recently unanswered question for this session.
+    // Used when the user replies "use llm" after a not_found response.
+    private async Task<string?> GetLastUnansweredQuestionAsync(string sessionCode)
+    {
+        try
+        {
+            await using var ds   = BuildDataSource();
+            await using var conn = await ds.OpenConnectionAsync();
+            await using var cmd  = new NpgsqlCommand(@"
+                SELECT uq.question_text
+                FROM unanswered_questions uq
+                JOIN interview_sessions s ON s.id = uq.session_id
+                WHERE s.session_code = @code
+                ORDER BY uq.first_asked_at DESC
+                LIMIT 1", conn);
+            cmd.Parameters.AddWithValue("code", sessionCode);
+            var result = await cmd.ExecuteScalarAsync();
+            return result as string;
+        }
+        catch { return null; }
     }
 
     private async Task<List<SearchResult>> GetAllChunksFromFileAsync(string sourceFile)
@@ -742,15 +812,15 @@ ANSWER:";
         {
             messages.Add(new
             {
-                id              = mr.GetInt32(0),
-                sequenceNumber  = mr.GetInt32(1),
-                role            = mr.GetString(2),
-                messageText     = mr.GetString(3),
-                answerSource    = mr.IsDBNull(4) ? null        : mr.GetString(4),
-                confidenceScore = mr.IsDBNull(5) ? (double?)null : mr.GetDouble(5),
-                fallbackProvider= mr.IsDBNull(6) ? null        : mr.GetString(6),
-                responseTimeMs  = mr.IsDBNull(7) ? (int?)null  : mr.GetInt32(7),
-                createdAt       = mr.GetDateTime(8),
+                id               = mr.GetInt32(0),
+                sequenceNumber   = mr.GetInt32(1),
+                role             = mr.GetString(2),
+                messageText      = mr.GetString(3),
+                answerSource     = mr.IsDBNull(4) ? null          : mr.GetString(4),
+                confidenceScore  = mr.IsDBNull(5) ? (double?)null : mr.GetDouble(5),
+                fallbackProvider = mr.IsDBNull(6) ? null          : mr.GetString(6),
+                responseTimeMs   = mr.IsDBNull(7) ? (int?)null    : mr.GetInt32(7),
+                createdAt        = mr.GetDateTime(8),
             });
         }
 
@@ -936,38 +1006,34 @@ ANSWER:";
         await cmd.ExecuteNonQueryAsync();
     }
 
-public async Task EndSessionAsync(string sessionCode)
-{
-    await using var ds   = BuildDataSource();
-    await using var conn = await ds.OpenConnectionAsync();
-    await using var cmd  = new NpgsqlCommand(@"
-        UPDATE interview_sessions
-        SET    status   = 'completed',
-               ended_at = CASE WHEN ended_at IS NULL THEN NOW() ELSE ended_at END
-        WHERE  session_code = @code
-        AND    status = 'active'", conn);
+    public async Task EndSessionAsync(string sessionCode)
+    {
+        await using var ds   = BuildDataSource();
+        await using var conn = await ds.OpenConnectionAsync();
+        await using var cmd  = new NpgsqlCommand(@"
+            UPDATE interview_sessions
+            SET    status   = 'completed',
+                   ended_at = CASE WHEN ended_at IS NULL THEN NOW() ELSE ended_at END
+            WHERE  session_code = @code
+            AND    status = 'active'", conn);
 
-    cmd.Parameters.AddWithValue("code", sessionCode);
-    await cmd.ExecuteNonQueryAsync();
-}
+        cmd.Parameters.AddWithValue("code", sessionCode);
+        await cmd.ExecuteNonQueryAsync();
+    }
 
-// ── AutoExpireStaleSessionsAsync ──────────────────────────────────────────────
-// Server-side safety net: marks sessions active for > 2 hours as completed.
-// Called on every GET /api/sessions so the list is always accurate.
-// The ended_at is set to started_at + 2 hours (approximates real end time).
-public async Task AutoExpireStaleSessionsAsync()
-{
-    await using var ds   = BuildDataSource();
-    await using var conn = await ds.OpenConnectionAsync();
-    await using var cmd  = new NpgsqlCommand(@"
-        UPDATE interview_sessions
-        SET    status   = 'completed',
-               ended_at = started_at + INTERVAL '2 hours'
-        WHERE  status     = 'active'
-        AND    started_at < NOW() - INTERVAL '2 hours'", conn);
+    public async Task AutoExpireStaleSessionsAsync()
+    {
+        await using var ds   = BuildDataSource();
+        await using var conn = await ds.OpenConnectionAsync();
+        await using var cmd  = new NpgsqlCommand(@"
+            UPDATE interview_sessions
+            SET    status   = 'completed',
+                   ended_at = started_at + INTERVAL '2 hours'
+            WHERE  status     = 'active'
+            AND    started_at < NOW() - INTERVAL '2 hours'", conn);
 
-    await cmd.ExecuteNonQueryAsync();
-}
+        await cmd.ExecuteNonQueryAsync();
+    }
 
     // Legacy — kept for any existing callers
     public async Task<object> GetTranscriptAsync(string sessionId)
@@ -993,7 +1059,7 @@ public async Task AutoExpireStaleSessionsAsync()
                 sequenceNumber = reader.GetInt32(0),
                 role           = reader.GetString(1),
                 message        = reader.GetString(2),
-                answerSource   = reader.IsDBNull(3) ? null   : reader.GetString(3),
+                answerSource   = reader.IsDBNull(3) ? null          : reader.GetString(3),
                 confidence     = reader.IsDBNull(4) ? (double?)null : reader.GetDouble(4),
                 timestamp      = reader.GetDateTime(5)
             });
