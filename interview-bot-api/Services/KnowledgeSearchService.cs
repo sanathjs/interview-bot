@@ -51,7 +51,16 @@ public class KnowledgeSearchService
         List<SearchResult> results;
         bool usedTagSearch = false;
 
-        if (queryKeywords.Count > 0)
+        // Broad single-technology questions like "what's your experience with .NET?"
+        // extract only ["dotnet"] — no specific topic tag to match against.
+        // Skip tag search for these and go straight to full search + file boost.
+        var isBroadTechQuestion = queryKeywords.Count <= 1 &&
+            queryKeywords.Any(k => new[] {
+                "dotnet","csharp","net","java","python","react","azure",
+                "aws","sql","postgres","redis","docker","kubernetes"
+            }.Contains(k));
+
+        if (queryKeywords.Count > 0 && !isBroadTechQuestion)
         {
             results = await SearchWithTagsAsync(queryVector, queryKeywords, topK);
 
@@ -68,6 +77,8 @@ public class KnowledgeSearchService
         }
         else
         {
+            if (isBroadTechQuestion)
+                _logger.LogInformation("--- Broad tech question — skipping tag search, using full search ---");
             results = await SearchPgVectorAsync(queryVector, 15);
         }
 
@@ -101,6 +112,26 @@ public class KnowledgeSearchService
         _logger.LogInformation(
             "--- TOP: {Score:F3} | {File} | {Title} | tagSearch={Used} ---",
             topScore, results[0].SourceFile, results[0].SectionTitle, usedTagSearch);
+
+        // ── RELEVANCE GATE ──────────────────────────────────────────────────
+        // If we used full search (no tag match), verify the top result's file
+        // actually belongs to the question's domain.
+        // Prevents career-journey chunks from answering .NET questions, etc.
+        // If the file doesn't match the domain, collapse score → unanswered.
+        if (!usedTagSearch)
+        {
+            var expectedDomain = GetExpectedDomain(question);
+            var topFile        = results[0].SourceFile.ToLower();
+
+            if (expectedDomain != null && !topFile.Contains(expectedDomain))
+            {
+                _logger.LogInformation(
+                    "--- RELEVANCE GATE BLOCKED: expected '{Domain}' but got '{File}' (score {Score:F3}) → unanswered ---",
+                    expectedDomain, results[0].SourceFile, topScore);
+                return (results, 0.0);   // forces unanswered flow
+            }
+        }
+        // ────────────────────────────────────────────────────────────────────
 
         return (results, topScore);
     }
@@ -235,7 +266,11 @@ public class KnowledgeSearchService
         "at","its","it","you","your","we","our","they","their",
         "can","could","would","should","will","not","but","any",
         "all","use","used","using","between","difference","about",
-        "give","example","explain","tell","me","please","define"
+        "give","example","explain","tell","me","please","define",
+        // Generic interview words — too broad to be useful as tag filters
+        "experience","background","knowledge","work","worked",
+        "years","long","much","many","level","skills","skill",
+        "good","great","know","familiar","comfortable","strong"
     };
 
     private List<string> ExtractQueryKeywords(string question)
@@ -253,6 +288,57 @@ public class KnowledgeSearchService
             .Where(w => !w.All(char.IsDigit))
             .Distinct()
             .ToList();
+    }
+
+    // ================================================================
+    // RELEVANCE GATE — maps question keywords to expected file domains
+    // Returns null if no specific domain can be inferred (allow any file).
+    // ================================================================
+    private string? GetExpectedDomain(string question)
+    {
+        var q = question.ToLower()
+            .Replace("c#", "csharp")
+            .Replace(".net", "dotnet");
+
+        // Technical .NET / coding questions → must come from dotnet files
+        // career-journey scores 90% on these because it mentions all these companies
+        // and technologies, but the actual answers must come from dotnet files.
+        if (new[] {
+                "dotnet","csharp","asp.net","entity framework","linq",
+                "async","await","dependency injection","middleware",
+                "struct","class","interface","abstract","generic",
+                "garbage collection","nullable","record","delegate",
+                "task","thread","ioc","solid","repository pattern",
+                "value type","reference type","boxing","unboxing",
+                "var ","dynamic ","ref ","out ","action","func",
+                "iquery","iqueryable","ienumerable","first(","single(",
+                "polly","httpclient","signalr","blazor",
+                "experience with dotnet","experience with csharp",
+                "experience with .net","your .net","your c#"
+            }
+            .Any(k => q.Contains(k)))
+            return "dotnet";
+
+        // System design
+        if (new[] {
+                "design a","system design","url shortener","rate limiter",
+                "notification system","chat system","scale to","high availability"
+            }
+            .Any(k => q.Contains(k)))
+            return "system-design";
+
+        // AI / RAG questions → must come from ai-rag file
+        if (new[] {
+                "rag","retrieval augmented","embedding","vector search",
+                "pgvector","semantic search","llm","language model",
+                "azure openai","huggingface","groq","ai experience",
+                "ai project","machine learning","nlp"
+            }
+            .Any(k => q.Contains(k)))
+            return "ai-rag";
+
+        // Personal/experiential questions — no domain restriction
+        return null;
     }
 
     // ================================================================
@@ -302,6 +388,13 @@ public class KnowledgeSearchService
         if (file.Contains("system-design") &&
             new[] { "design","scale","system","rate limit","notification",
                     "url shortener","chat system","high availability" }
+            .Any(k => q.Contains(k))) return 0.15;
+
+        // Broad technology experience questions — these have no specific tags
+        // so they always fall through to full search; boost the right file here.
+        if ((file.Contains("dotnet") || file.Contains("dotnet-interview-qa")) &&
+            new[] { ".net","dotnet","c#","csharp","asp.net","experience with",
+                    "how long","your .net","your dotnet","your csharp" }
             .Any(k => q.Contains(k))) return 0.15;
 
         return 0.0;
