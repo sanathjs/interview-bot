@@ -117,8 +117,6 @@ public async Task<IActionResult> DeleteUnanswered(int id)
     return Ok(new { message = "Deleted ✅" });
 }
 
-// Add both of these inside ChatController, alongside your existing endpoints
-
 // ── 2. GET SESSIONS — auto-expires stale active sessions ─────────────────────
 // Sessions stuck as "active" for more than 2 hours are auto-marked completed.
 // This is the server-side safety net for when ALL client-side signals fail
@@ -187,16 +185,6 @@ public async Task<IActionResult> UpdateSessionDetails(
         return StatusCode(500, new { error = "Something went wrong" });
     }
 }
-
-// ── 1. END SESSION endpoint ───────────────────────────────────────────────────
-// Handles ALL three ways a session can end:
-//   a) Manual "End Session" button  → JSON POST
-//   b) Page unload / tab close      → sendBeacon (text/plain, no body)
-//   c) SPA navigation away          → fetch with keepalive:true
-//   d) Tab hidden / phone locked    → sendBeacon from visibilitychange
-//
-// IMPORTANT: Do NOT use [FromBody] — sendBeacon sends Content-Type: text/plain
-// with no JSON body, so [FromBody] will cause a 400 on beacon requests.
 
 [HttpPost("sessions/{sessionCode}/end")]
 public async Task<IActionResult> EndSession(string sessionCode)

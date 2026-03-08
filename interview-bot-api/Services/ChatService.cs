@@ -880,16 +880,17 @@ ANSWER:";
 
 public async Task EndSessionAsync(string sessionCode)
 {
-    await using var conn = await OpenConnectionAsync();
-
-    // Only update if still active — idempotent, safe to call multiple times
-    await conn.ExecuteAsync(@"
+    await using var ds   = BuildDataSource();
+    await using var conn = await ds.OpenConnectionAsync();
+    await using var cmd  = new NpgsqlCommand(@"
         UPDATE interview_sessions
-        SET    status    = 'completed',
-               ended_at  = CASE WHEN ended_at IS NULL THEN NOW() ELSE ended_at END
-        WHERE  session_code = @sessionCode
-        AND    status = 'active'
-    ", new { sessionCode });
+        SET    status   = 'completed',
+               ended_at = CASE WHEN ended_at IS NULL THEN NOW() ELSE ended_at END
+        WHERE  session_code = @code
+        AND    status = 'active'", conn);
+
+    cmd.Parameters.AddWithValue("code", sessionCode);
+    await cmd.ExecuteNonQueryAsync();
 }
 
 // ── AutoExpireStaleSessionsAsync ──────────────────────────────────────────────
@@ -898,15 +899,16 @@ public async Task EndSessionAsync(string sessionCode)
 // The ended_at is set to started_at + 2 hours (approximates real end time).
 public async Task AutoExpireStaleSessionsAsync()
 {
-    await using var conn = await OpenConnectionAsync();
-
-    await conn.ExecuteAsync(@"
+    await using var ds   = BuildDataSource();
+    await using var conn = await ds.OpenConnectionAsync();
+    await using var cmd  = new NpgsqlCommand(@"
         UPDATE interview_sessions
         SET    status   = 'completed',
                ended_at = started_at + INTERVAL '2 hours'
         WHERE  status     = 'active'
-        AND    started_at < NOW() - INTERVAL '2 hours'
-    ");
+        AND    started_at < NOW() - INTERVAL '2 hours'", conn);
+
+    await cmd.ExecuteNonQueryAsync();
 }
 
     // Legacy — kept for any existing callers
