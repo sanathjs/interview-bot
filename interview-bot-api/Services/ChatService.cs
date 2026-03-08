@@ -260,36 +260,7 @@ Follow-ups (JSON array only):";
         };
     }
 
-public async Task EndSessionAsync(string sessionCode)
-{
-    await using var conn = await OpenConnectionAsync();
 
-    // Only update if still active — idempotent, safe to call multiple times
-    await conn.ExecuteAsync(@"
-        UPDATE interview_sessions
-        SET    status    = 'completed',
-               ended_at  = CASE WHEN ended_at IS NULL THEN NOW() ELSE ended_at END
-        WHERE  session_code = @sessionCode
-        AND    status = 'active'
-    ", new { sessionCode });
-}
-
-// ── AutoExpireStaleSessionsAsync ──────────────────────────────────────────────
-// Server-side safety net: marks sessions active for > 2 hours as completed.
-// Called on every GET /api/sessions so the list is always accurate.
-// The ended_at is set to started_at + 2 hours (approximates real end time).
-public async Task AutoExpireStaleSessionsAsync()
-{
-    await using var conn = await OpenConnectionAsync();
-
-    await conn.ExecuteAsync(@"
-        UPDATE interview_sessions
-        SET    status   = 'completed',
-               ended_at = started_at + INTERVAL '2 hours'
-        WHERE  status     = 'active'
-        AND    started_at < NOW() - INTERVAL '2 hours'
-    ");
-}
     // ================================================================
     // LOW CONFIDENCE — store as unanswered, return polite message
     // ================================================================
@@ -906,6 +877,37 @@ ANSWER:";
         cmd.Parameters.AddWithValue("seq",     sequenceNumber);
         await cmd.ExecuteNonQueryAsync();
     }
+
+public async Task EndSessionAsync(string sessionCode)
+{
+    await using var conn = await OpenConnectionAsync();
+
+    // Only update if still active — idempotent, safe to call multiple times
+    await conn.ExecuteAsync(@"
+        UPDATE interview_sessions
+        SET    status    = 'completed',
+               ended_at  = CASE WHEN ended_at IS NULL THEN NOW() ELSE ended_at END
+        WHERE  session_code = @sessionCode
+        AND    status = 'active'
+    ", new { sessionCode });
+}
+
+// ── AutoExpireStaleSessionsAsync ──────────────────────────────────────────────
+// Server-side safety net: marks sessions active for > 2 hours as completed.
+// Called on every GET /api/sessions so the list is always accurate.
+// The ended_at is set to started_at + 2 hours (approximates real end time).
+public async Task AutoExpireStaleSessionsAsync()
+{
+    await using var conn = await OpenConnectionAsync();
+
+    await conn.ExecuteAsync(@"
+        UPDATE interview_sessions
+        SET    status   = 'completed',
+               ended_at = started_at + INTERVAL '2 hours'
+        WHERE  status     = 'active'
+        AND    started_at < NOW() - INTERVAL '2 hours'
+    ");
+}
 
     // Legacy — kept for any existing callers
     public async Task<object> GetTranscriptAsync(string sessionId)
