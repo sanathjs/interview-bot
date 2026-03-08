@@ -7,6 +7,8 @@ public class KnowledgeChunk
     public string? SectionTitle { get; set; }
     public string ChunkText { get; set; } = string.Empty;
     public int ChunkIndex { get; set; }
+    public string?   Topic        { get; set; }
+    public string[]? Tags         { get; set; }
 }
 
 public class IngestionResult
