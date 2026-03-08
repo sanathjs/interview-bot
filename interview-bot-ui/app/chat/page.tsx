@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Message, ConversationTurn } from "@/types";
 import { sendMessage } from "@/lib/api";
+import { ARCHITECTURE_CHIPS, PROJECT_MENU_FOLLOWUPS } from "@/components/chat/ArchitectureCard";
 import MessageBubble from "@/components/chat/MessageBubble";
 import TypingIndicator from "@/components/chat/TypingIndicator";
 import InputBar from "@/components/chat/InputBar";
@@ -143,9 +144,22 @@ export default function ChatPage() {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
 
-    // Cleanup on React unmount (SPA navigation)
+    // Third safety net: tab hidden / phone locked / switched app
+    // visibilitychange fires in cases where beforeunload doesn't (mobile, tab switch)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && !endedRef.current && sessionIdRef.current) {
+        navigator.sendBeacon(
+          `${API_URL}/api/sessions/${sessionIdRef.current}/end`,
+        );
+        // Don't set endedRef here — user might come back to the tab
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Cleanup on React unmount (SPA navigation away from /chat)
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       endSession(sessionIdRef.current);
     };
   }, [endSession]);
@@ -179,6 +193,29 @@ export default function ChatPage() {
     if (!scored.length) { setAvgConfidence(null); return; }
     setAvgConfidence(scored.reduce((a, m) => a + (m.confidenceScore ?? 0), 0) / scored.length);
   }, [messages]);
+
+
+  // ── Architecture chip — inject card locally, no API call ──────────────────
+  const handleArchitectureChip = (chip: string) => {
+    const projectId = ARCHITECTURE_CHIPS[chip];
+    if (!projectId) return;
+
+    // Add interviewer question bubble
+    const qMsg: Message = {
+      id: newId(), role: "interviewer", text: chip.replace(/^[^ ]+ /, ""),
+      timestamp: new Date().toISOString(),
+    };
+    // Add architecture card bot bubble
+    const cardMsg: Message = {
+      id: newId(), role: "bot", text: "",
+      answerSource: "architecture",
+      architectureProject: projectId,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, qMsg, cardMsg]);
+    setUsedFollowUps(prev => new Set([...prev, chip]));
+    setChatStarted(true);
+  };
 
   const handleSend = async (text: string) => {
     if (ended) return;
@@ -498,7 +535,10 @@ export default function ChatPage() {
               showSourceDetails={showSourceDetail}
               usedFollowUps={usedFollowUps}
               onFeedback={handleFeedback}
-              onFollowUp={(q) => { setChatStarted(true); setUsedFollowUps(prev => new Set([...prev, q])); handleSend(q); }}
+              onFollowUp={(q) => {
+                  if (ARCHITECTURE_CHIPS[q]) { handleArchitectureChip(q); }
+                  else { setChatStarted(true); setUsedFollowUps(prev => new Set([...prev, q])); handleSend(q); }
+                }}
             />
           ))}
           {isLoading && <TypingIndicator />}
@@ -528,7 +568,10 @@ export default function ChatPage() {
                   "What's your experience with .NET?",
                   "Tell me about a challenging project",
                 ].map(q => (
-                  <button key={q} onClick={() => { setChatStarted(true); setUsedFollowUps(prev => new Set([...prev, q])); handleSend(q); }} style={{
+                  <button key={q} onClick={() => {
+                    if (ARCHITECTURE_CHIPS[q]) { handleArchitectureChip(q); }
+                    else { setChatStarted(true); setUsedFollowUps(prev => new Set([...prev, q])); handleSend(q); }
+                  }} style={{
                     padding: "8px 14px", borderRadius: 99, fontSize: 12,
                     cursor: "pointer", fontFamily: "inherit",
                     background: C.card, border: `1px solid ${C.border}`,

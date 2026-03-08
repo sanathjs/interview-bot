@@ -907,21 +907,6 @@ ANSWER:";
         await cmd.ExecuteNonQueryAsync();
     }
 
-    public async Task EndSessionAsync(string sessionCode)
-    {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
-        await using var cmd  = new NpgsqlCommand(@"
-            UPDATE interview_sessions
-            SET status = 'completed', ended_at = NOW()
-            WHERE session_code = @code", conn);
-
-        cmd.Parameters.AddWithValue("code", sessionCode);
-        await cmd.ExecuteNonQueryAsync();
-
-        _logger.LogInformation("Session ended: {Code}", sessionCode);
-    }
-
     // Legacy — kept for any existing callers
     public async Task<object> GetTranscriptAsync(string sessionId)
     {

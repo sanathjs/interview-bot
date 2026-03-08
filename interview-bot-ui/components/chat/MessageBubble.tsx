@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Message } from "@/types";
+import ArchitectureCard from "@/components/chat/ArchitectureCard";
 
 const C = {
   card:   "#1c1c21",
@@ -176,10 +177,11 @@ interface Props {
 export default function MessageBubble({
   message, streaming, showFollowUps, showSourceDetails, usedFollowUps, onFeedback, onFollowUp,
 }: Props) {
-  const isBot        = message.role === "bot";
-  const isUnanswered = message.answerSource === "unanswered";
-  const isGreeting   = message.answerSource === "greeting";
-  const isFallback   = message.answerSource === "fallback_ai";
+  const isBot          = message.role === "bot";
+  const isUnanswered   = message.answerSource === "unanswered";
+  const isGreeting     = message.answerSource === "greeting";
+  const isFallback     = message.answerSource === "fallback_ai";
+  const isArchitecture = message.answerSource === "architecture";
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [copied, setCopied]     = useState(false);
 
@@ -248,16 +250,19 @@ export default function MessageBubble({
 
         {/* Bubble */}
         <div style={{
-          padding: "12px 16px", width: "100%",
+          padding: isArchitecture ? "0" : "12px 16px", width: "100%",
           borderRadius: isBot ? "16px 16px 16px 4px" : "16px 16px 4px 16px",
-          background: isBot ? botBg : "linear-gradient(135deg, #f59e0b, #d97706)",
-          border: isBot ? botBorder : "none",
+          background: isArchitecture ? "transparent" : (isBot ? botBg : "linear-gradient(135deg, #f59e0b, #d97706)"),
+          border: isArchitecture ? "none" : (isBot ? botBorder : "none"),
           color: isBot ? C.text : "white",
         }}>
-          <RenderText text={message.text} streaming={streaming} />
+          {isArchitecture && message.architectureProject
+            ? <ArchitectureCard projectId={message.architectureProject} />
+            : <RenderText text={message.text} streaming={streaming} />
+          }
 
           {/* Action bar */}
-          {isBot && !streaming && (
+          {isBot && !streaming && !isArchitecture && (
             <div style={{
               display: "flex", alignItems: "center", gap: 4,
               marginTop: 10, paddingTop: 8,
@@ -315,7 +320,7 @@ export default function MessageBubble({
         </div>
 
         {/* Source banner — same width as bubble, below it */}
-        {isBot && !streaming && !isGreeting && (
+        {isBot && !streaming && !isGreeting && !isArchitecture && (
           <div style={{ width: "100%" }}>
             <SourceBanner
               answerSource={message.answerSource}
