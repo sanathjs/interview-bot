@@ -197,7 +197,20 @@ export default function ChatPage() {
 
   // ── Architecture chip — inject card locally, no API call ──────────────────
   const handleArchitectureChip = (chip: string) => {
-    const projectId = ARCHITECTURE_CHIPS[chip];
+    // Try exact match first, then fuzzy match in case of encoding differences
+    const trimmed = chip.trim();
+    let projectId = ARCHITECTURE_CHIPS[trimmed];
+    if (!projectId) {
+      // Fallback: find by partial match on the label text
+      const entry = Object.entries(ARCHITECTURE_CHIPS).find(([key]) =>
+        trimmed.includes("Advisor Search") && key.includes("Advisor Search") ||
+        trimmed.includes("Feedback Search") && key.includes("Feedback Search") ||
+        trimmed.includes("Interview Bot") && key.includes("Interview Bot") ||
+        trimmed.includes("JWT") && key.includes("JWT") ||
+        trimmed.includes("Integration") && key.includes("Integration")
+      );
+      projectId = entry?.[1] ?? 0;
+    }
     if (!projectId) return;
 
     // Add interviewer question bubble
@@ -217,8 +230,21 @@ export default function ChatPage() {
     setChatStarted(true);
   };
 
-  const handleSend = async (text: string) => {
+  // ── Resolve project chip labels to full questions ─────────────────────────
+  const resolveProjectShorthand = (text: string): string => {
+    const PROJECT_CHIPS: Record<string, string> = {
+      "🔍 Semantic Advisor Search":   "Tell me about the Semantic Advisor Search project",
+      "💬 Advisor Feedback Search":   "Tell me about the Advisor Feedback Search project",
+      "🤖 This Interview Bot":        "Tell me about the Interview Bot project you built",
+      "🔐 JWT Auth Migration":        "Tell me about the JWT Authentication Migration project",
+      "🔗 Third-Party Integrations":  "Tell me about the Third-Party Integrations project",
+    };
+    return PROJECT_CHIPS[text.trim()] ?? text;
+  };
+
+  const handleSend = async (rawText: string) => {
     if (ended) return;
+    const text = resolveProjectShorthand(rawText); // resolves project chip labels → full questions
 
     const interviewerMsg: Message = {
       id: newId(), role: "interviewer", text, timestamp: new Date().toISOString(),
@@ -536,7 +562,16 @@ export default function ChatPage() {
               usedFollowUps={usedFollowUps}
               onFeedback={handleFeedback}
               onFollowUp={(q) => {
-                  if (ARCHITECTURE_CHIPS[q]) { handleArchitectureChip(q); }
+                  const trimmedQ = q.trim();
+                  const isArchChip = ARCHITECTURE_CHIPS[trimmedQ] ||
+                    Object.keys(ARCHITECTURE_CHIPS).some(k =>
+                      (trimmedQ.includes("Advisor Search") && k.includes("Advisor Search")) ||
+                      (trimmedQ.includes("Feedback Search") && k.includes("Feedback Search")) ||
+                      (trimmedQ.includes("Interview Bot") && k.includes("Interview Bot")) ||
+                      (trimmedQ.includes("JWT") && k.includes("JWT")) ||
+                      (trimmedQ.includes("Integration") && k.includes("Integration"))
+                    );
+                  if (isArchChip) { handleArchitectureChip(trimmedQ); }
                   else { setChatStarted(true); setUsedFollowUps(prev => new Set([...prev, q])); handleSend(q); }
                 }}
             />
