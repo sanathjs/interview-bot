@@ -222,24 +222,82 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
         var followUps = new List<string>();
         try
         {
-            var followUpPrompt = $@"Based on this interview Q&A, suggest exactly 2 natural follow-up questions
-an interviewer might ask next. Return ONLY a JSON array of 2 strings, nothing else.
-Example: [""Can you elaborate on X?"", ""How did you handle Y?""]
+            var questionLow = request.Message.ToLower();
 
-Question: {request.Message}
-Answer: {answer}
+            // ── Project menu response → show 5 project picker chips ──────────
+            var isProjectMenu = answer.Contains("Which one would you like me to go deeper on");
 
-Follow-ups (JSON array only):";
+            // ── Project-specific answer → detect which project and inject arch chip ──
+            // Maps keywords in the question to the exact chip label used in ArchitectureCard.tsx
+            var archChip = (questionLow.Contains("semantic") && questionLow.Contains("search")) ||
+                           (questionLow.Contains("advisor search")) ||
+                           (questionLow.Contains("project 1"))
+                ? "🔍 Architecture: Advisor Search"
 
-            var followUpRaw = _llmProvider == "groq"
-                ? await CallGroqAsync(followUpPrompt)
-                : await CallOllamaAsync(followUpPrompt);
+                : (questionLow.Contains("feedback") && questionLow.Contains("search")) ||
+                  (questionLow.Contains("project 2"))
+                ? "💬 Architecture: Feedback Search"
 
-            var cleaned = followUpRaw.Trim()
-                .TrimStart('`').TrimEnd('`')
-                .Replace("json", "").Trim();
+                : (questionLow.Contains("interview bot")) ||
+                  (questionLow.Contains("project 3")) ||
+                  (questionLow.Contains("this bot")) ||
+                  (questionLow.Contains("chatbot") && questionLow.Contains("personal"))
+                ? "🤖 Architecture: Interview Bot"
 
-            followUps = JsonSerializer.Deserialize<List<string>>(cleaned) ?? new();
+                : (questionLow.Contains("jwt")) ||
+                  (questionLow.Contains("authentication")) ||
+                  (questionLow.Contains("auth migration")) ||
+                  (questionLow.Contains("project 4"))
+                ? "🔐 Architecture: JWT Migration"
+
+                : (questionLow.Contains("zinrelo") || questionLow.Contains("iterable") ||
+                   questionLow.Contains("zendesk") || questionLow.Contains("integration") ||
+                   questionLow.Contains("third-party") || questionLow.Contains("third party") ||
+                   questionLow.Contains("project 5"))
+                ? "🔗 Architecture: Integrations"
+
+                : null;
+
+            if (isProjectMenu)
+            {
+                // Project list was shown — return project picker chips
+                followUps = new List<string>
+                {
+                    "🔍 Semantic Advisor Search",
+                    "💬 Advisor Feedback Search",
+                    "🤖 This Interview Bot",
+                    "🔐 JWT Auth Migration",
+                    "🔗 Third-Party Integrations",
+                };
+            }
+            else
+            {
+                // Normal follow-up generation via LLM
+                var followUpPrompt = $@"Based on this interview Q&A, suggest exactly 2 natural follow-up questions
+                    an interviewer might ask next. Return ONLY a JSON array of 2 strings, nothing else.
+                    Example: [""Can you elaborate on X?"", ""How did you handle Y?""]
+
+                Question: {request.Message}
+                Answer: {answer}
+
+                Follow-ups (JSON array only):";
+
+                var followUpRaw = _llmProvider == "groq"
+                    ? await CallGroqAsync(followUpPrompt)
+                    : await CallOllamaAsync(followUpPrompt);
+
+                var cleaned = followUpRaw.Trim()
+                    .TrimStart('`').TrimEnd('`')
+                    .Replace("json", "").Trim();
+
+                followUps = JsonSerializer.Deserialize<List<string>>(cleaned) ?? new();
+
+                // Append architecture chip if this answer was about a specific project
+                if (archChip != null)
+                {
+                    followUps.Add(archChip);
+                }
+            }
         }
         catch { /* follow-ups are non-critical */ }
 
