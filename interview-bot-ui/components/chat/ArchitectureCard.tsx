@@ -2,6 +2,8 @@
 // Renders inline in a chat bubble when answerSource === "architecture"
 // No props except projectId (1–5). All data is local — zero API calls.
 
+import React from "react";
+
 const C = {
   bg:       "#141417",
   card:     "#1c1c21",
@@ -338,7 +340,7 @@ function Integrations() {
 
 const PROJECTS: Record<number, {
   emoji: string; label: string; where: string; color: string; tag: string;
-  Component: () => JSX.Element;
+  Component: () => React.ReactNode;
 }> = {
   1: { emoji: "🔍", label: "Semantic Advisor Search", where: "Ingenio / Keen", color: C.amber, tag: "RAG · Production", Component: AdvisorSearch },
   2: { emoji: "💬", label: "Advisor Feedback Search",  where: "Ingenio / Keen", color: C.green, tag: "RAG · Production", Component: FeedbackSearch },
