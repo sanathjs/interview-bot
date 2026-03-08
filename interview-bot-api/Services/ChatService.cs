@@ -388,7 +388,7 @@ Answer:";
         {
             Answer          = answer,
             AnswerSource    = "llm_general",
-            ConfidenceScore = null,
+            ConfidenceScore = 0.0,
             UsedFallback    = true,
             SessionId       = request.SessionId,
             Sources         = new List<SourceChunk>(),
