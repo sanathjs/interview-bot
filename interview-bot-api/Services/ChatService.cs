@@ -115,6 +115,12 @@ public class ChatService
     {
         var questionLower = request.Message.ToLower();
 
+        var isIntroQuestion = new[] {
+            "tell me about yourself", "introduce yourself", "about yourself",
+            "who are you", "about you", "introduce", "your background",
+            "tell us about yourself", "can you introduce"
+        }.Any(k => questionLower.Contains(k));
+
         var isCareerQuestion = new[] {
             "career", "journey", "work history", "walk me through",
             "companies you worked", "previous companies"
@@ -141,7 +147,12 @@ public class ChatService
 
         List<SearchResult> contextChunks;
 
-        if (isCareerQuestion)
+        if (isIntroQuestion)
+        {
+            contextChunks = await GetAllChunksFromFileAsync("introduction.md");
+            if (contextChunks.Count == 0) contextChunks = results.Take(5).ToList();
+        }
+        else if (isCareerQuestion)
         {
             contextChunks = await GetAllChunksFromFileAsync("career-journey.md");
             if (contextChunks.Count == 0) contextChunks = results.Take(5).ToList();
@@ -260,14 +271,18 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
                 ? "📐 Show architecture: Interview Bot"
 
                 : questionLow.Contains("jwt") ||
-                  questionLow.Contains("authentication") ||
                   questionLow.Contains("auth migration") ||
                   questionLow.Contains("project 4")
                 ? "📐 Show architecture: JWT Migration"
 
+                // Only specific platform names trigger Integrations chip.
+                // "integration" and "authentication" removed — too generic,
+                // cause false positives on "AI integration", "system integration",
+                // "authentication in general" etc.
                 : questionLow.Contains("zinrelo") || questionLow.Contains("iterable") ||
-                  questionLow.Contains("zendesk") || questionLow.Contains("integration") ||
+                  questionLow.Contains("zendesk") ||
                   questionLow.Contains("third-party") || questionLow.Contains("third party") ||
+                  questionLow.Contains("platform integration") ||
                   questionLow.Contains("project 5")
                 ? "📐 Show architecture: Integrations"
 
