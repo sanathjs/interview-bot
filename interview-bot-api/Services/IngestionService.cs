@@ -36,6 +36,14 @@ public class IngestionService
         foreach (var filePath in mdFiles)
         {
             var fileName = Path.GetFileName(filePath);
+
+            // Skip files excluded from search (e.g. answering-guidelines.md)
+            if (ChunkMetadataHelper.IsExcludedFromSearch(fileName))
+            {
+                _logger.LogInformation("Skipping excluded file: {File}", fileName);
+                continue;
+            }
+
             try
             {
                 var content = await File.ReadAllTextAsync(filePath);
@@ -107,7 +115,7 @@ public class IngestionService
 
             // ── derive topic and tags for this chunk ───────────────────────
             var topic = ChunkMetadataHelper.ExtractTopic(fileName);
-            var tags  = ChunkMetadataHelper.ExtractTags(heading, body);
+            var tags  = ChunkMetadataHelper.ExtractTags(heading, body, fileName);
 
             _logger.LogInformation(
                 "  {File} | {Heading} | topic={Topic} | tags=[{Tags}]",

@@ -55,7 +55,7 @@ export default function SessionsPage() {
       setLoading(true);
       try {
         const data = await getSessions();
-        setSessions(data.sessions);
+        setSessions(data?.sessions ?? []);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();

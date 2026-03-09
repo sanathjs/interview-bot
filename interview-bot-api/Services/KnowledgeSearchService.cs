@@ -11,8 +11,8 @@ public class KnowledgeSearchService
     private readonly ILogger<KnowledgeSearchService> _logger;
     private readonly EmbeddingService _embedding;
 
-    private const double HighConfidence = 0.65;
-    private const double LowConfidence  = 0.63;
+    private const double HighConfidence = 0.62;
+    private const double LowConfidence  = 0.52;
 
     public KnowledgeSearchService(
         IConfiguration config,
@@ -174,6 +174,7 @@ public class KnowledgeSearchService
                 FROM knowledge_chunks
                 WHERE embedding IS NOT NULL
                   AND tags && @keywords
+                  AND source_file NOT LIKE '%answering-guidelines%'
                 ORDER BY embedding <=> @queryVec::vector
                 LIMIT @topK";
 
@@ -225,6 +226,7 @@ public class KnowledgeSearchService
                     1 - (embedding <=> @queryVec::vector) AS similarity
                 FROM knowledge_chunks
                 WHERE embedding IS NOT NULL
+                  AND source_file NOT LIKE '%answering-guidelines%'
                 ORDER BY embedding <=> @queryVec::vector
                 LIMIT @topK";
 

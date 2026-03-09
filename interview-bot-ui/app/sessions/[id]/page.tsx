@@ -18,7 +18,7 @@ const C = {
 interface TranscriptMessage {
   id: number;
   sequenceNumber: number;
-  role: "interviewer" | "assistant";
+  role: "interviewer" | "assistant" | "bot";
   messageText: string;
   confidenceScore: number | null;
   answerSource: string | null;
@@ -304,7 +304,7 @@ export default function SessionTranscriptPage() {
 
         {/* Transcript */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {session.messages.map((msg, idx) => {
+          {(session.messages ?? []).map((msg, idx) => {
             const isInterviewer = msg.role === "interviewer";
             return (
               <div key={msg.id} style={{
