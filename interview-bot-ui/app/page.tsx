@@ -176,7 +176,7 @@ export default function HomePage() {
                 }}>AI Twin</span>
               </div>
               <p style={{ fontSize: 12, color: C.muted, margin: "3px 0 0" }}>
-                Lead Software Engineer · 10+ yrs · Bengaluru
+                Lead Software Engineer · 12+ yrs · Bengaluru
               </p>
             </div>
           </div>

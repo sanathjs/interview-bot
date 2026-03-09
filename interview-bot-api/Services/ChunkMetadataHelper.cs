@@ -76,7 +76,10 @@ public static class ChunkMetadataHelper
             tags.AddRange(new[] { "leadership", "led", "managed", "team", "mentored", "lead", "mentor" });
 
         if (file.Contains("general-hr"))
-            tags.AddRange(new[] { "strengths", "weakness", "goals", "motivation", "salary", "notice", "hr", "yourself" });
+            tags.AddRange(new[] { "hr", "yourself" });
+            // Note: "strengths", "weakness" etc are NOT injected here.
+            // Those come from the section heading itself ("What Are Your Greatest Strengths?")
+            // so the tag search correctly finds ONLY that specific section, not all HR chunks.
 
         if (file.Contains("recent-project"))
             tags.AddRange(new[] { "recent", "project", "keen", "ingenio", "built", "projects", "current" });

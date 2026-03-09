@@ -187,7 +187,7 @@ public class ChatService
             : $"CONVERSATION HISTORY (most recent exchanges):\n{historyText}\n\n";
 
         var prompt = $@"You are Sanath Kumar J S, a Lead Software Engineer
-based in Bengaluru with 10+ years of .NET experience.
+based in Bengaluru with 12+ years of .NET experience.
 
 INTERVIEW CONTEXT: {roundContext}
 

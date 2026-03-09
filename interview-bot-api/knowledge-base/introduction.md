@@ -1,20 +1,20 @@
 # Introduction / About Me
 
-## Who I Am
-I'm Sanath Kumar J S, a Lead Software Engineer with 12+ years of experience 
-building enterprise applications primarily in .NET and C#. I'm currently at 
-Ingenio in Bengaluru, working on backend architecture, microservices, and 
-AI-powered search systems. My core strength is backend engineering but I'm 
-comfortable across the full stack — I've shipped production systems in Angular, 
-React, and Next.js alongside my .NET work.
+## Tell Me About Yourself
+My name is Sanath Kumar J S. I am a Lead Software Engineer based in Bengaluru with 12+ years of experience, primarily in .NET and C#. I have worked across multiple domains — US healthcare at Capgemini, market research at Euromonitor, and currently e-commerce and spiritual services at Ingenio where I have been for the past five years.
 
-What makes my profile a bit different from most senior .NET engineers is that 
-I've moved beyond traditional backend work into applied AI. I've built two 
-production RAG pipelines end to end — the Keen advisor search system at Ingenio 
-using Azure OpenAI and pgvector, and this interview bot you're talking to right 
-now. Both are live, both handle real traffic, both built entirely by me. I'm not 
-exploring AI — I'm shipping it.
+What makes my background a bit different from most .NET engineers is that I have moved into applied AI. I have built two production RAG pipelines at Ingenio — a semantic advisor search system and a feedback search system — both using Azure OpenAI and pgvector. On top of that, this interview bot you are talking to right now is something I built entirely outside of work to sharpen my skills and showcase what I can do. I am not exploring AI — I am shipping it.
+
+I am looking for my next challenge where I can apply this combination of .NET expertise and AI engineering experience in a more innovative product environment.
+
+## Who I Am
+I am Sanath Kumar J S, a Lead Software Engineer with 12+ years of experience building enterprise applications in .NET and C#. I am currently at Ingenio in Bengaluru, working on backend architecture, microservices, and AI-powered search systems. My core strength is backend engineering but I am comfortable across the full stack — I have shipped production systems in Angular, React, and Next.js alongside my .NET work.
+
+What makes my profile stand out is that I have moved beyond traditional backend work into applied AI. I have built two production RAG pipelines at Ingenio using Azure OpenAI and pgvector, and I built this interview bot outside of work entirely from scratch. I am actively looking for a new challenge where I can bring this combination of skills to a strong engineering team.
 I am based in Bengaluru, India.
+
+## My Introduction (Short Version)
+I am a Lead Software Engineer with 12+ years in .NET full-stack development. I have worked across healthcare, market research, and e-commerce domains. At Ingenio I grew into a Lead role and built two production AI search systems. I am now looking for my next challenge where I can combine my backend expertise with applied AI work.
 
 ## What I Specialize In / Core Specialization
 - Backend development using C# and .NET / .NET Core
@@ -24,10 +24,7 @@ I am based in Bengaluru, India.
 - AI integration — specifically RAG pipelines and semantic search
 
 ## What Makes Me Different
-I am a versatile full-stack engineer who bridges both frontend and backend seamlessly. In recent years I have moved into
-AI-integrated development, with hands-on experience building RAG pipelines, integrating vector databases, and working
-with LLMs in production systems. I also have strong leadership experience — mentoring junior developers and leading
-cross-functional teams to deliver end-to-end projects.
+I am a versatile full-stack engineer who bridges both frontend and backend seamlessly. In recent years I have moved into AI-integrated development, with hands-on experience building RAG pipelines, integrating vector databases, and working with LLMs in production systems. I also have strong leadership experience — mentoring junior developers and leading cross-functional teams to deliver end-to-end projects.
 
 ## My Career Summary
 - 12+ years in .NET full-stack development
@@ -37,6 +34,4 @@ cross-functional teams to deliver end-to-end projects.
 - Currently a Lead Software Engineer at Ingenio, open to new opportunities
 
 ## Apart From My Work
-- I’m a tech enthusiast who likes staying updated with new technologies. Whenever I get time, I enjoy experimenting and building small systems to explore new tools and ideas.
-- Outside work I built this interview bot you're talking to right now —
-which I think shows more about my AI interest than anything on my resume.
+Outside of work I am a tech enthusiast who enjoys experimenting with new tools and ideas. I built this interview bot entirely in my personal time — it uses Next.js, .NET 8, PostgreSQL with pgvector, and Groq LLM. It is a real working system and I think it shows more about my engineering interest and initiative than anything on my resume. I also enjoy reading about system design and distributed systems, and I stay active on GitHub.

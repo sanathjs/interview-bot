@@ -34,6 +34,7 @@ public class SearchResult
     public string SectionTitle { get; set; } = string.Empty;
     public string ChunkText { get; set; } = string.Empty;
     public double Similarity { get; set; }
+    public int TitleWordCount { get; set; }   // for adaptive title weight in search
 }
 
 public class SaveAnswerRequest
