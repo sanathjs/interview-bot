@@ -198,7 +198,7 @@ public class ChatService
             : $"CONVERSATION HISTORY (most recent exchanges):\n{historyText}\n\n";
 
         var prompt = $@"You are Sanath Kumar J S, a Lead Software Engineer
-based in Bengaluru with 12+ years of .NET experience.
+based in Bengaluru with 10+ years of .NET experience.
 
 INTERVIEW CONTEXT: {roundContext}
 
@@ -220,9 +220,21 @@ CRITICAL RULES:
 FORMATTING RULES — apply ONLY if the question matches:
 - If question asks about career journey, work history, or companies worked at:
   → List companies MOST RECENT FIRST (Ingenio first, Toyota last)
-  → Company Names should be displayed in bold
-  → One line per company: Company (years) — Role — one key thing
+  → Format EXACTLY like this — one company per line, use ** ** for bold:
+     **Ingenio** (2020 – present) — Lead Software Engineer — built 2 production RAG systems
+     **Euromonitor International** (2017 – 2020) — Senior Developer — market research platform
+     **Capgemini** (2014 – 2017) — Software Engineer — US healthcare projects
+     **Toyota Tsusho** (2012 – 2014) — Developer — vehicle insurance systems
   → End with one sentence about what you are looking for next
+
+- If question asks about recent projects or what you have built at Ingenio:
+  → List projects MOST RECENT / MOST IMPACTFUL FIRST
+  → Format EXACTLY like this:
+     **Advisor Feedback Search** — semantic search over 1M+ feedback entries using RAG
+     **Semantic Advisor Search** — matches users to advisors via vector similarity
+     **JWT Authentication Migration** — migrated legacy auth to JWT across all services
+     **Third-Party Platform Integrations** — Zinrelo, Iterable, Zendesk integrations into Keen
+  → One line per project, bold project name, dash, one-line description
 
 - When mentioning AI experience, always say 'I have built' or 'I have shipped'
   — never 'I am exploring' or 'I am excited about'. The work is done, not planned.
@@ -255,12 +267,25 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
 
             var isProjectMenu = answer.Contains("Which one would you like me to go deeper on");
 
+            // Detect explicit "show me / explain architecture" requests with no specific project
+            // e.g. "can you explain architecture diagram?" / "show me the architecture"
+            var isGenericArchRequest =
+                questionLow.Contains("architecture diagram") ||
+                (questionLow.Contains("architecture") && (
+                    questionLow.Contains("explain") ||
+                    questionLow.Contains("show me") ||
+                    questionLow.Contains("show the") ||
+                    questionLow.Contains("walk me") ||
+                    questionLow.Contains("overview")));
+
             var archChip = (questionLow.Contains("semantic") && questionLow.Contains("search")) ||
                            questionLow.Contains("advisor search") ||
+                           (questionLow.Contains("architecture") && questionLow.Contains("advisor")) ||
                            questionLow.Contains("project 1")
                 ? "📐 Show architecture: Advisor Search"
 
                 : (questionLow.Contains("feedback") && questionLow.Contains("search")) ||
+                  (questionLow.Contains("architecture") && questionLow.Contains("feedback")) ||
                   questionLow.Contains("project 2")
                 ? "📐 Show architecture: Feedback Search"
 
@@ -272,13 +297,12 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
 
                 : questionLow.Contains("jwt") ||
                   questionLow.Contains("auth migration") ||
+                  (questionLow.Contains("architecture") && questionLow.Contains("jwt")) ||
                   questionLow.Contains("project 4")
                 ? "📐 Show architecture: JWT Migration"
 
                 // Only specific platform names trigger Integrations chip.
-                // "integration" and "authentication" removed — too generic,
-                // cause false positives on "AI integration", "system integration",
-                // "authentication in general" etc.
+                // "integration" and "authentication" removed — too generic.
                 : questionLow.Contains("zinrelo") || questionLow.Contains("iterable") ||
                   questionLow.Contains("zendesk") ||
                   questionLow.Contains("third-party") || questionLow.Contains("third party") ||
@@ -297,6 +321,17 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
                     "🤖 This Interview Bot",
                     "🔐 JWT Auth Migration",
                     "🔗 Third-Party Integrations",
+                };
+            }
+            else if (isGenericArchRequest)
+            {
+                // User explicitly asked to see/explain architecture → show all 4 arch diagram pills
+                followUps = new List<string>
+                {
+                    "📐 Show architecture: Advisor Search",
+                    "📐 Show architecture: Feedback Search",
+                    "📐 Show architecture: Interview Bot",
+                    "📐 Show architecture: JWT Migration",
                 };
             }
             else

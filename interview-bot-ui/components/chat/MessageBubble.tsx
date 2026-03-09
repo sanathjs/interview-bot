@@ -20,6 +20,29 @@ function RenderText({ text, streaming }: { text: string; streaming?: boolean }) 
     <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.65, fontSize: 14 }}>
       {lines.map((line, i) => {
         if (line === "") return <div key={i} style={{ height: 6 }} />;
+
+        // Detect list-item lines: "-- Some text" or "- Some text"
+        // Renders as amber bullet + bold amber company/project name + rest of line
+        const listMatch = line.match(/^--?\s+(.+)/);
+        if (listMatch) {
+          const content = listMatch[1];
+          // Split on first " — " or " - " to separate bold name from description
+          const dashIdx = content.indexOf(" — ");
+          const name = dashIdx !== -1 ? content.slice(0, dashIdx) : content;
+          const rest = dashIdx !== -1 ? content.slice(dashIdx) : "";
+          // Strip any **bold** markers already in the name
+          const cleanName = name.replace(/\*\*/g, "");
+          return (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+              <span style={{ color: "#f59e0b", fontSize: 16, lineHeight: 1.4, flexShrink: 0, marginTop: 1 }}>▸</span>
+              <span>
+                <strong style={{ fontWeight: 700, color: "#f59e0b" }}>{cleanName}</strong>
+                {rest && <span style={{ color: "#9292a4" }}>{rest}</span>}
+              </span>
+            </div>
+          );
+        }
+
         const parts = line.split(/\*\*(.*?)\*\*/g);
         return (
           <div key={i}>
