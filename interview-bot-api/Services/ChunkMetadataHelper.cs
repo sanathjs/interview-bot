@@ -1,6 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Add this static helper class anywhere in the Services folder
-// File: Services/ChunkMetadataHelper.cs
+// Services/ChunkMetadataHelper.cs  —  FIXED VERSION
+// Key changes:
+//   1. Topic-based tag injection per file — career chunks always get "career"
+//      tag, leadership chunks always get "leadership" tag, etc.
+//   2. Introduction chunks always get "yourself","introduce","background" tags
+//   3. IsExcludedFromSearch() — answering-guidelines.md never returned
+//   4. ExtractTags() signature updated to accept sourceFile
 // ─────────────────────────────────────────────────────────────────────────────
 
 namespace interview_bot_api.Services;
@@ -15,49 +20,82 @@ public static class ChunkMetadataHelper
         "that","this","these","those","with","from","by","on",
         "at","its","it","you","your","we","our","they","their",
         "can","could","would","should","will","not","but","any",
-        "all","use","used","using","between","difference","about"
+        "all","use","used","using","between","difference","about",
+        "give","example","explain","tell","me","please","define",
     };
 
     /// <summary>
-    /// Derives a clean topic name from the source file name.
-    /// "dotnet-interview-qa.md" → "dotnet-interview-qa"
-    /// "ai-rag.md"              → "ai-rag"
-    /// "career-journey.md"      → "career-journey"
+    /// Files that should NEVER be returned by the search engine.
+    /// answering-guidelines.md is internal instructions, not interview answers.
     /// </summary>
-    public static string ExtractTopic(string sourceFile)
+    public static bool IsExcludedFromSearch(string sourceFile)
     {
-        return Path.GetFileNameWithoutExtension(sourceFile).ToLower();
+        var f = sourceFile.ToLower();
+        return f.Contains("answering-guidelines");
     }
 
+    public static string ExtractTopic(string sourceFile)
+        => Path.GetFileNameWithoutExtension(sourceFile).ToLower();
+
     /// <summary>
-    /// Extracts keyword tags from a section heading.
-    /// "What is the difference between var and dynamic in C#?"
-    /// → ["var", "dynamic", "c#"]
-    ///
-    /// Also includes meaningful words from the first line of chunk text
-    /// so even short headings get good coverage.
+    /// Extracts keyword tags from heading + body + injects file-level semantic tags.
+    /// The file-level injection ensures chunks are always findable for their topic,
+    /// regardless of how the section heading is worded.
     /// </summary>
-    public static string[] ExtractTags(string sectionTitle, string chunkText)
+    public static string[] ExtractTags(string sectionTitle, string chunkBody, string sourceFile)
     {
-        // Combine heading + first line of chunk for richer tag coverage
-        var firstLine = chunkText.Split('\n').FirstOrDefault() ?? "";
+        var file = Path.GetFileNameWithoutExtension(sourceFile).ToLower();
+
+        var firstLine = chunkBody.Split('\n').FirstOrDefault() ?? "";
         var source    = $"{sectionTitle} {firstLine}";
 
         var tags = source
             .ToLower()
-            // Replace punctuation with spaces, keep # for C#
             .Replace("c#", "csharp")
             .Replace(".net", "dotnet")
-            // Split on non-alphanumeric except hyphen
-            .Split(new[] { ' ', '?', '.', ',', '(', ')', '/', '\'', '"', ':', ';', '!' },
+            .Split(new[] { ' ', '?', '.', ',', '(', ')', '/', '\'', '"', ':', ';', '!', '\u2014', '-' },
                    StringSplitOptions.RemoveEmptyEntries)
-            .Where(w => w.Length > 1)                       // keep "c#" → "csharp" (7 chars), skip single chars
-            .Where(w => !StopWords.Contains(w))             // remove stop words
-            .Where(w => !w.All(char.IsDigit))               // remove pure numbers
+            .Where(w => w.Length > 1)
+            .Where(w => !StopWords.Contains(w))
+            .Where(w => !w.All(char.IsDigit))
             .Distinct()
-            .Take(20)                                        // cap at 20 tags per chunk
-            .ToArray();
+            .ToList();
 
-        return tags;
+        // ── File-level semantic tag injection ────────────────────────────────
+        // Each file gets a guaranteed set of tags so that common question
+        // phrasings always route to the right file, even when the heading
+        // wording doesn't contain the exact keyword.
+
+        if (file.Contains("career-journey"))
+            tags.AddRange(new[] { "career", "journey", "history", "companies", "worked", "previous", "walk" });
+
+        if (file.Contains("introduction"))
+            tags.AddRange(new[] { "yourself", "introduce", "introduction", "background", "profile", "summary", "about" });
+
+        if (file.Contains("leadership"))
+            tags.AddRange(new[] { "leadership", "led", "managed", "team", "mentored", "lead", "mentor" });
+
+        if (file.Contains("general-hr"))
+            tags.AddRange(new[] { "strengths", "weakness", "goals", "motivation", "salary", "notice", "hr", "yourself" });
+
+        if (file.Contains("recent-project"))
+            tags.AddRange(new[] { "recent", "project", "keen", "ingenio", "built", "projects", "current" });
+
+        if (file.Contains("ai-rag"))
+            tags.AddRange(new[] { "rag", "ai", "vector", "embedding", "llm", "semantic", "search", "pgvector", "retrieval" });
+
+        if (file.Contains("challenges"))
+            tags.AddRange(new[] { "challenge", "difficult", "problem", "obstacle", "conflict", "tough", "hard" });
+
+        if (file.Contains("dotnet") || file.Contains("dotnet-interview"))
+            tags.AddRange(new[] { "dotnet", "csharp", "net", "aspnet", "dotnetcore" });
+
+        if (file.Contains("my-approach") || file.Contains("system-design"))
+            tags.AddRange(new[] { "design", "system", "architecture", "scale", "approach", "url", "shortener", "notification", "rate", "limiter", "chat" });
+
+        return tags
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(30)
+            .ToArray();
     }
 }
