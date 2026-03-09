@@ -1,21 +1,20 @@
 # 🤖 Interview Bot
 
-An AI-powered interview assistant that represents **Sanath Kumar J S** in technical interviews using a personal knowledge base, RAG (Retrieval Augmented Generation), and real-time voice interaction.
+An AI-powered interview assistant that represents **Sanath Kumar J S** in technical interviews using a personal knowledge base, multi-signal RAG search, and real-time voice interaction.
 
-> Built with Next.js 14 · .NET 8 · PostgreSQL + pgvector · Groq LLM · Whisper STT · HuggingFace Embeddings
+> Built with Next.js 14 · .NET 8 · PostgreSQL + pgvector · Groq LLM · HuggingFace Embeddings · Groq Whisper STT
 
 ---
 
 ## ✨ Features
 
-- 🧠 **RAG-powered answers** — Answers interview questions using a personal knowledge base of `.md` files
-- 🎙️ **Voice input** — Interviewer asks questions via microphone (Groq Whisper STT, auto-sends)
-- 🔊 **Voice playback** — Bot answers read aloud via browser TTS (Web Speech API)
-- 📝 **Unanswered question tracking** — Questions outside the KB are stored for prep
-- 📚 **Prep dashboard** — PIN-protected. Review, answer, and promote questions to the KB
+- 🧠 **3-signal RAG search** — Body embedding + title embedding + AI-generated question variants per chunk
+- 🎙️ **Voice input** — Interviewer asks questions via microphone (Groq Whisper STT)
+- 🔊 **Voice playback** — Answers read aloud via browser TTS (Web Speech API)
+- 📝 **Unanswered question tracking** — Questions outside KB stored for prep
+- 📚 **Prep dashboard** — Review, answer, and promote unanswered questions to KB
 - 📋 **Session history** — Browse past interviews with full transcripts
-- 📊 **Confidence scoring** — Every answer shows a confidence % based on vector similarity
-- 🏠 **Home page** — Clean landing page with navigation to all routes
+- 📊 **Confidence scoring** — Every answer shows confidence % from weighted vector similarity
 - 📱 **Mobile responsive** — Works on all screen sizes
 
 ---
@@ -28,13 +27,13 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
 │   (Vercel)          │              │   (Railway)           │
 └─────────────────────┘              └──────────┬───────────┘
                                                 │
-                         ┌──────────────────────┼───────────────────┐
-                         │                      │                   │
-               ┌─────────▼──────┐    ┌──────────▼─────┐  ┌────────▼────────┐
-               │  PostgreSQL 16  │    │   Groq Cloud   │  │  HuggingFace    │
-               │  + pgvector    │    │  LLM + Whisper │  │  bge-base-en    │
-               │  (Supabase)    │    │  (Free tier)   │  │  Embeddings     │
-               └────────────────┘    └────────────────┘  └─────────────────┘
+                              ┌─────────────────┼─────────────────┐
+                              │                 │                 │
+                    ┌─────────▼──────┐  ┌───────▼──────┐  ┌─────▼───────┐
+                    │  PostgreSQL 16  │  │  Groq Cloud  │  │ HuggingFace │
+                    │  + pgvector    │  │  LLM + STT   │  │  Embeddings │
+                    │  (Supabase)    │  │  (Free tier) │  │  (Free tier)│
+                    └────────────────┘  └──────────────┘  └─────────────┘
 ```
 
 ---
@@ -43,193 +42,114 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
 
 ```
 interview-bot/
-├── interview-bot-ui/               # Next.js 14 frontend
+├── interview-bot-ui/          # Next.js 14 frontend
 │   ├── app/
-│   │   ├── page.tsx                # Home page with route cards
-│   │   ├── layout.tsx              # Root layout + metadata
-│   │   ├── chat/page.tsx           # Main chat interface
-│   │   ├── prep/page.tsx           # Prep dashboard (PIN protected)
+│   │   ├── page.tsx           # Home page
+│   │   ├── chat/page.tsx      # Chat interface
+│   │   ├── prep/page.tsx      # Prep dashboard (PIN protected)
 │   │   └── sessions/
-│   │       ├── page.tsx            # Session history list
-│   │       └── [id]/page.tsx       # Full transcript view
+│   │       ├── page.tsx       # Session list
+│   │       └── [id]/page.tsx  # Transcript view
 │   ├── components/
-│   │   ├── Navbar.tsx              # Shared sticky navigation
+│   │   ├── Navbar.tsx
 │   │   └── chat/
-│   │       ├── InputBar.tsx        # Text + voice input bar
-│   │       ├── MessageBubble.tsx   # Chat bubble + TTS play button
-│   │       └── TypingIndicator.tsx # Animated dots while bot responds
-│   └── lib/
-│       └── api.ts                  # All fetch wrappers
+│   │       ├── InputBar.tsx
+│   │       ├── MessageBubble.tsx
+│   │       └── TypingIndicator.tsx
+│   └── lib/api.ts
 │
-├── interview-bot-api/              # .NET 8 Web API backend
+├── interview-bot-api/         # .NET 8 Web API
 │   ├── Controllers/
-│   │   ├── ChatController.cs       # Chat, sessions, unanswered endpoints
-│   │   ├── TranscribeController.cs # POST /api/transcribe (Groq Whisper)
-│   │   └── IngestionController.cs  # POST /api/ingest (KB re-ingestion)
+│   │   ├── ChatController.cs
+│   │   ├── TranscribeController.cs
+│   │   └── IngestionController.cs
 │   ├── Services/
-│   │   ├── ChatService.cs          # RAG orchestration + DB helpers
-│   │   ├── KnowledgeSearchService.cs # pgvector search + file boost
-│   │   ├── IngestionService.cs     # Chunk + embed + store KB
-│   │   └── EmbeddingService.cs     # HuggingFace BAAI/bge-base-en-v1.5
+│   │   ├── ChatService.cs
+│   │   ├── KnowledgeSearchService.cs
+│   │   ├── IngestionService.cs
+│   │   ├── EmbeddingService.cs
+│   │   └── ChunkMetadataHelper.cs
 │   ├── Models/
-│   │   └── Models.cs               # Request/response models
-│   └── appsettings.example.json    # Config template (copy to appsettings.json)
-│
-└── knowledge-base/                 # Personal KB — .md files
-    ├── introduction.md
-    ├── career-journey.md
-    ├── ai-rag.md
-    ├── dotnet.md
-    ├── challenges.md
-    ├── leadership.md
-    ├── general-hr.md
-    ├── recent-project.md
-    └── ...
+│   │   ├── ChatModels.cs
+│   │   └── KnowledgeChunk.cs
+│   └── knowledge-base/        # Personal KB — .md files
+│       ├── introduction.md
+│       ├── career-journey.md
+│       ├── ai-rag.md
+│       ├── dotnet.md
+│       ├── dotnet-interview-qa.md
+│       └── ...
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🧠 How RAG Works — 3-Signal Search
 
-### Prerequisites
+```
+Question asked
+      ↓
+HuggingFace BAAI/bge-base-en-v1.5 → embed query (768d)
+      ↓
+3 parallel SQL queries (all use HNSW index):
+  Signal 1: top 15 by body_embedding      <=> queryVec
+  Signal 2: top 15 by title_embedding     <=> queryVec
+  Signal 3: top 15 by questions_embedding <=> queryVec
+      ↓
+Merge all candidates by chunk_id in C#
+      ↓
+Compute weighted score per chunk:
+  titleWeight = title_word_count >= 5 ? 0.30 : 0.15
+  bodyWeight  = title_word_count >= 5 ? 0.25 : 0.40
+  finalScore  = (questionsSim × 0.45)
+              + (titleSim     × titleWeight)
+              + (bodySim      × bodyWeight)
+      ↓
+Tag overlap soft boost (+0.05) + file keyword boost (+0.05–0.08)
+      ↓
+Confidence gate:
+  ≥ 0.62 → HIGH   → Answer from KB
+  ≥ 0.52 → MEDIUM → Answer from KB
+  < 0.52 → LOW    → Store as unanswered question
+      ↓
+Groq llama-3.3-70b-versatile generates answer
+      ↓
+Save to chat_messages with confidence score
+```
 
-| Tool | Version | Purpose |
+### Why 3 signals?
+
+| Signal | Weight | Purpose |
 |---|---|---|
-| Node.js | 18+ | Frontend |
-| .NET SDK | 8.0 | Backend |
-| PostgreSQL | 16 | Database |
-| pgvector | 0.7 | Vector search |
-| Docker | Optional | DB containerization |
-
-> ⚠️ Ollama is **no longer required**. Embeddings now use HuggingFace cloud API.
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/sanathjs/interview-bot.git
-cd interview-bot
-```
-
-### 2. Set up PostgreSQL + pgvector
-
-```bash
-# Using Docker (recommended)
-docker run --name interview-bot-db \
-  -e POSTGRES_PASSWORD=postgres123 \
-  -e POSTGRES_DB=interview_bot \
-  -p 5432:5432 \
-  -d pgvector/pgvector:pg16
-
-# Enable pgvector
-psql -U postgres -d interview_bot -c "CREATE EXTENSION IF NOT EXISTS vector;"
-```
-
-### 3. Backend setup
-
-```bash
-cd interview-bot-api
-
-# Copy config template and fill in your keys
-cp appsettings.example.json appsettings.json
-# Edit appsettings.json with your API keys (see Configuration below)
-
-dotnet restore
-dotnet run
-# API runs on http://localhost:5267
-```
-
-### 4. Frontend setup
-
-```bash
-cd interview-bot-ui
-
-cp .env.example .env.local
-# Edit .env.local with your values
-
-npm install
-npm run dev
-# UI runs on http://localhost:3000
-```
-
-### 5. Ingest knowledge base
-
-```cmd
-curl -X POST http://localhost:5267/api/ingest -H "X-Admin-Key: your-admin-key"
-```
-
-Expected response: `chunksCreated: 70`
-
----
-
-## ⚙️ Configuration
-
-### Backend — `appsettings.json` (never committed — gitignored)
-
-```json
-{
-  "DATABASE_URL": "Host=localhost;Port=5432;Database=interview_bot;Username=postgres;Password=yourpassword",
-  "ADMIN_INGEST_KEY": "your-secret-key",
-  "LlmProvider": "groq",
-  "HuggingFace": {
-    "ApiKey": "hf_..."
-  },
-  "Groq": {
-    "ApiKey": "gsk_...",
-    "Model": "llama-3.3-70b-versatile",
-    "BaseUrl": "https://api.groq.com/openai/v1"
-  }
-}
-```
-
-### Frontend — `.env.local` (never committed — gitignored)
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5267
-NEXT_PUBLIC_PREP_PIN=1234
-```
-
----
-
-## 🔑 API Keys Required
-
-| Service | Purpose | Free tier | Get it at |
-|---|---|---|---|
-| Groq | LLM chat (llama-3.3-70b) + Whisper STT | ✅ Yes | console.groq.com |
-| HuggingFace | Embeddings (bge-base-en-v1.5) | ✅ Yes | huggingface.co/settings/tokens |
-
----
-
-## 📡 API Endpoints
-
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| POST | `/api/chat` | Send message, get RAG answer | None |
-| GET | `/api/sessions` | List all sessions with stats | None |
-| GET | `/api/sessions/{id}/detail` | Full session + transcript by id | None |
-| GET | `/api/unanswered` | Prep dashboard question list | None |
-| PATCH | `/api/unanswered/{id}/answer` | Save answer to question | None |
-| POST | `/api/unanswered/{id}/promote` | Promote answer to KB | None |
-| DELETE | `/api/unanswered/{id}` | Delete question | None |
-| POST | `/api/transcribe` | Audio → text via Groq Whisper | None |
-| POST | `/api/ingest` | Re-ingest all KB `.md` files | X-Admin-Key header |
+| `questions_embedding` | **0.45** | AI generated 5 question variants per chunk at ingest time. Question-to-question matching is the most accurate signal — same vector space as the query. Solves the Q↔A vector space mismatch problem. |
+| `title_embedding` | **0.30 / 0.15** | Section heading embedded alone (not diluted by body). Adaptive: 5+ word headings (e.g. "Tell Me About Yourself") get 0.30 weight; short headings (e.g. "Who I Am") get 0.15. |
+| `body_embedding` | **0.25 / 0.40** | Semantic content of the full chunk. Safety net for paraphrasing and technical knowledge questions. Gets higher weight when title is short. |
 
 ---
 
 ## 🗄️ Database Schema
 
 ```sql
+-- Enable pgvector
 CREATE EXTENSION IF NOT EXISTS vector;
 
+-- Core KB table
 CREATE TABLE knowledge_chunks (
-    id              SERIAL PRIMARY KEY,
-    source_file     TEXT,
-    section_title   TEXT,
-    chunk_text      TEXT,
-    chunk_index     INTEGER,
-    embedding       VECTOR(768),
-    hit_count       INTEGER DEFAULT 0,
-    last_used_at    TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ DEFAULT NOW()
+    id                   SERIAL PRIMARY KEY,
+    source_file          TEXT,
+    section_title        TEXT,
+    chunk_text           TEXT,              -- Topic + Section + body (body embedding)
+    chunk_index          INTEGER,
+    embedding            VECTOR(768),       -- body embedding
+    topic                TEXT,
+    tags                 TEXT[],            -- keyword tags for soft boost
+    hit_count            INTEGER DEFAULT 0,
+    last_used_at         TIMESTAMPTZ,
+    created_at           TIMESTAMPTZ DEFAULT NOW(),
+    -- ── Added for 3-signal search ─────────────────────────────────────
+    title_embedding      VECTOR(768),       -- section heading embedded alone
+    questions_embedding  VECTOR(768),       -- 5 AI-generated question variants joined + embedded
+    questions_text       TEXT[],            -- raw questions (for inspection in Supabase)
+    title_word_count     INT                -- drives adaptive title weight
 );
 
 CREATE TABLE interview_sessions (
@@ -249,10 +169,10 @@ CREATE TABLE chat_messages (
     id                SERIAL PRIMARY KEY,
     session_id        INTEGER REFERENCES interview_sessions(id),
     sequence_number   INTEGER,
-    role              TEXT,
+    role              TEXT,                 -- 'interviewer' or 'bot'
     message_text      TEXT,
     confidence_score  FLOAT,
-    answer_source     TEXT,
+    answer_source     TEXT,                 -- knowledge_base | not_found | llm_general | fallback_ai
     fallback_provider TEXT,
     response_time_ms  INTEGER,
     was_helpful       BOOLEAN,
@@ -270,6 +190,9 @@ CREATE TABLE unanswered_questions (
     priority            TEXT DEFAULT 'low',
     sanath_answer       TEXT,
     kb_chunk_id         INTEGER REFERENCES knowledge_chunks(id),
+    question_category   TEXT,              -- added via ALTER TABLE
+    sanath_answered_at  TIMESTAMPTZ,       -- added via ALTER TABLE
+    updated_at          TIMESTAMPTZ,       -- added via ALTER TABLE
     first_asked_at      TIMESTAMPTZ DEFAULT NOW(),
     last_asked_at       TIMESTAMPTZ DEFAULT NOW()
 );
@@ -286,58 +209,162 @@ CREATE TABLE session_analytics (
     duration_minutes     INTEGER
 );
 
--- HNSW index for fast vector search
-CREATE INDEX ON knowledge_chunks USING hnsw (embedding vector_cosine_ops);
+-- HNSW indexes for fast vector search
+CREATE INDEX ON knowledge_chunks USING hnsw (embedding          vector_cosine_ops);
+CREATE INDEX ON knowledge_chunks USING hnsw (title_embedding    vector_cosine_ops);
+CREATE INDEX ON knowledge_chunks USING hnsw (questions_embedding vector_cosine_ops);
 ```
 
 ---
 
-## 🧠 How RAG Works
+## 📝 Knowledge Base
 
-```
-Question asked
-      ↓
-Embed question → HuggingFace BAAI/bge-base-en-v1.5 (768d)
-      ↓
-pgvector cosine similarity search (top 15 chunks)
-      ↓
-Apply file boost (keyword match → +0.15 to +0.20)
-      ↓
-Re-rank top 10
-      ↓
-Confidence decision:
-  ≥ 0.65 → HIGH   → Answer confidently from KB
-  ≥ 0.58 → MEDIUM → Answer from top 3 chunks
-  < 0.58 → LOW    → Store as unanswered
-      ↓
-Build prompt with context chunks
-      ↓
-Groq llama-3.3-70b-versatile generates answer
-      ↓
-Save to chat_messages with confidence score
+14 `.md` files in `interview-bot-api/knowledge-base/`. `answering-guidelines.md` is excluded from search (internal style instructions only).
+
+| File | Chunks | Topic |
+|---|---|---|
+| `introduction.md` | 7 | Who I am, Tell Me About Yourself, career summary, specialization |
+| `career-journey.md` | 5 | Toyota Tsusho, Capgemini, Euromonitor, Ingenio, why looking |
+| `recent-project.md` | 11 | Keen product, RAG systems, JWT migration, integrations |
+| `ai-rag.md` | 13 | 3 production RAG pipelines, how each works, tech decisions |
+| `dotnet-interview-qa.md` | 20 | 20 Q&A pairs: DI, async/await, GC, EF Core, Polly, records etc. |
+| `dotnet.md` | 6 | Years, what I build, strongest areas, design patterns |
+| `leadership.md` | 4 | 3 leadership stories + philosophy |
+| `general-hr.md` | 9 | Strengths, weakness, salary, notice, education |
+| `my-approach.md` | 7 | System design: URL shortener, notifications, rate limiter, chat |
+| `arrays-strings.md` | 7 | DSA: two pointers, sliding window, hashmap, Kadane |
+| `trees.md` | 6 | BST, traversal, DFS vs BFS |
+| `dynamic-programming.md` | 4 | DP identification, approach, patterns |
+| `complexity-cheatsheet.md` | 4 | Big-O reference |
+| `answering-guidelines.md` | — | EXCLUDED — internal instructions |
+
+**Total indexed: 101 chunks across 13 files**
+
+**To add new content:**
+1. Edit or add a `.md` file — use `## Section Title` headings
+2. Write headings as the **exact question an interviewer would ask** (improves title + questions embedding match)
+3. Push to GitHub, then re-ingest:
+
+```bash
+curl -X POST https://interview-bot-production.up.railway.app/api/ingest \
+  -H "X-Admin-Key: your-key"
+# Takes ~5 minutes — embeds body + title + generates 5 question variants per chunk
 ```
 
 ---
 
-## 🎙️ Voice Input Flow
+## 🚀 Getting Started
 
+### Prerequisites
+
+| Tool | Version | Purpose |
+|---|---|---|
+| Node.js | 18+ | Frontend |
+| .NET SDK | 8.0 | Backend |
+| PostgreSQL | 16 | Database |
+| pgvector | 0.7 | Vector search |
+| Docker | Optional | DB containerisation |
+
+### 1. Clone
+
+```bash
+git clone https://github.com/sanathjs/interview-bot.git
+cd interview-bot
 ```
-User clicks mic → MediaRecorder captures audio/webm
-      ↓
-User clicks mic again to stop
-      ↓
-Audio blob → POST /api/transcribe (multipart)
-      ↓
-.NET → Groq whisper-large-v3-turbo → plain text
-      ↓
-Auto-sends as chat message
+
+### 2. Database setup
+
+```bash
+docker run --name interview-bot-db \
+  -e POSTGRES_PASSWORD=postgres123 \
+  -e POSTGRES_DB=interview_bot \
+  -p 5432:5432 \
+  -d pgvector/pgvector:pg16
+
+psql -U postgres -d interview_bot -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
+
+Run `docs/schema.sql` to create all tables and indexes.
+
+### 3. Backend
+
+```bash
+cd interview-bot-api
+cp appsettings.example.json appsettings.json
+# Fill in your values
+dotnet restore
+dotnet run
+# Runs on http://localhost:5267
+```
+
+### 4. Frontend
+
+```bash
+cd interview-bot-ui
+cp .env.example .env.local
+# Fill in values
+npm install
+npm run dev
+# Runs on http://localhost:3000
+```
+
+### 5. Ingest KB
+
+```bash
+curl -X POST http://localhost:5267/api/ingest -H "X-Admin-Key: your-key"
+# Takes ~5 minutes locally
+```
+
+---
+
+## ⚙️ Configuration
+
+### Backend — `appsettings.json`
+
+```json
+{
+  "DATABASE_URL": "Host=localhost;Port=5432;Database=interview_bot;Username=postgres;Password=postgres123",
+  "ADMIN_INGEST_KEY": "your-secret-key",
+  "LlmProvider": "groq",
+  "HuggingFace": {
+    "ApiKey": "hf_..."
+  },
+  "Groq": {
+    "ApiKey": "gsk_...",
+    "Model": "llama-3.3-70b-versatile",
+    "BaseUrl": "https://api.groq.com/openai/v1"
+  }
+}
+```
+
+### Frontend — `.env.local`
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5267
+NEXT_PUBLIC_PREP_PIN=1234
+```
+
+---
+
+## 📡 API Endpoints
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| POST | `/api/chat` | RAG chat — answer + confidence + sources | None |
+| GET | `/api/sessions` | List sessions with stats | None |
+| GET | `/api/sessions/{id}/detail` | Full transcript | None |
+| GET | `/api/unanswered` | Prep dashboard questions | None |
+| PATCH | `/api/unanswered/{id}/answer` | Save answer | None |
+| POST | `/api/unanswered/{id}/promote` | Add answer to KB | None |
+| DELETE | `/api/unanswered/{id}` | Delete question | None |
+| POST | `/api/transcribe` | Audio → Groq Whisper → text | None |
+| POST | `/api/ingest` | Re-ingest all KB files | X-Admin-Key header |
 
 ---
 
 ## 🌐 Deployment
 
-### Free Stack (pre-prod)
+### Free Stack (current)
 
 | Layer | Platform | Cost |
 |---|---|---|
@@ -348,46 +375,28 @@ Auto-sends as chat message
 | LLM + STT | Groq | Free |
 | **Total** | | **$0/month** |
 
-### Production Stack
+### Production Stack (future)
 
 | Layer | Platform | Cost |
 |---|---|---|
 | Frontend | Vercel / Azure Static Web Apps | Free |
 | Backend | Azure App Service B1 | ~$13/mo |
 | Database | Azure PostgreSQL Flexible | ~$14/mo |
-| Embeddings | HuggingFace or OpenAI | ~$0–1/mo |
-| LLM | Groq 70B or gpt-4o-mini | ~$0–3/mo |
-| **Total** | | **~$27–30/mo** |
-
----
-
-## 📝 Knowledge Base
-
-KB lives in `/knowledge-base/*.md`. To add new content:
-1. Edit or add a `.md` file
-2. Call `POST /api/ingest` with your admin key
-3. All 70 chunks are re-embedded (~30–60 seconds)
-4. New content is immediately live in vector search
+| Embeddings | OpenAI text-embedding-3-small | ~$0.01/mo |
+| LLM | gpt-4o-mini | ~$1–3/mo |
 
 ---
 
 ## 🛠️ Development Notes
 
-- `appsettings.json` and `.env.local` are **gitignored** — never committed
-- Always use `appsettings.example.json` and `.env.example` as templates
-- `session_analytics` has no auto-trigger — stats fall back to live subqueries
+- `session_analytics` has no auto-trigger — stats fall back to live subqueries from `chat_messages`
+- `answering-guidelines.md` is excluded from search at ingest time and from SQL queries — do not rename it
 - Voice input uses `MediaRecorder` → Groq Whisper → auto-sends transcribed text
-- Voice playback uses `window.speechSynthesis` (browser TTS, no API cost)
-- Embeddings use `BAAI/bge-base-en-v1.5` via HuggingFace router API (768d)
-
----
-
-## 🔒 Security Notes
-
-- Never commit `appsettings.json` — it contains your API keys
-- Never commit `.env.local` — it contains your prep PIN
-- Rotate API keys immediately if accidentally pushed to GitHub
-- The prep dashboard PIN is set via `NEXT_PUBLIC_PREP_PIN` env variable
+- Voice playback uses `window.speechSynthesis` (browser TTS, no API needed)
+- Prep dashboard is PIN-protected via `NEXT_PUBLIC_PREP_PIN` env variable
+- Admin gear icon visible only when `localStorage.ib_role === "admin"`
+- Re-ingest required after any KB change — takes ~5 min for 101 chunks (3 embeddings + 1 Groq call per chunk)
+- KB headings should be written as the **exact question** an interviewer would ask — this maximises title and questions embedding accuracy
 
 ---
 
