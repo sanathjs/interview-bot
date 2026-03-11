@@ -490,15 +490,15 @@ ANSWER:";
     }
 
     // ================================================================
-    // CALL GROQ
+    // CALL GROQ  (with retry on 429 rate-limit)
     // ================================================================
-    private async Task<string> CallGroqAsync(string prompt)
+    private async Task<string> CallGroqAsync(string prompt, int attempt = 1)
     {
         try
         {
             var apiKey  = _config["Groq:ApiKey"];
             var model   = _config["Groq:Model"] ?? "llama-3.3-70b-versatile";
-            var baseUrl = _config["Groq:BaseUrl"] ?? "https://api.groq.com/openai/v1";
+            var baseUrl = _config["Groq:BaseUrl"] ?? "https://api.groqcloud.com/openai/v1";
 
             var requestBody = new
             {
@@ -514,7 +514,7 @@ ANSWER:";
                         content = prompt
                     }
                 },
-                max_tokens  = 300,
+                max_tokens  = 600,   // raised from 300 — context-heavy prompts need room
                 temperature = 0.2
             };
 
@@ -526,6 +526,17 @@ ANSWER:";
                 "application/json");
 
             var response = await _httpClient.SendAsync(httpRequest);
+
+            // Retry once on 429 (rate limit) after a short back-off
+            if ((int)response.StatusCode == 429 && attempt <= 2)
+            {
+                var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(3);
+                _logger.LogWarning("Groq 429 rate limit — waiting {Delay}s then retrying (attempt {Attempt})",
+                    retryAfter.TotalSeconds, attempt);
+                await Task.Delay(retryAfter);
+                return await CallGroqAsync(prompt, attempt + 1);
+            }
+
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -537,7 +548,7 @@ ANSWER:";
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Groq API call failed");
+            _logger.LogError(ex, "Groq API call failed (attempt {Attempt})", attempt);
             return "I encountered an error generating a response.";
         }
     }
