@@ -133,7 +133,15 @@ public class ChatService
 
         var isLeadershipQuestion = new[] {
             "led a team", "leadership", "mentored", "managed a team",
-            "led people", "team lead"
+            "led people", "team lead", "leadership experience", "leading a team",
+            "your leadership", "lead a team", "managing people", "people management"
+        }.Any(k => questionLower.Contains(k));
+
+        var isDotNetQuestion = new[] {
+            ".net experience", "dotnet experience", "your .net", "c# experience",
+            "how long .net", "how long have you", "your experience with .net",
+            "tell me about your .net", "tell me about your c#",
+            "asp.net", "your backend", "your technical stack"
         }.Any(k => questionLower.Contains(k));
 
         var roundContext = request.RoundType switch
@@ -166,6 +174,11 @@ public class ChatService
         {
             contextChunks = await GetAllChunksFromFileAsync("leadership.md");
             if (contextChunks.Count == 0) contextChunks = results.Take(3).ToList();
+        }
+        else if (isDotNetQuestion)
+        {
+            contextChunks = await GetAllChunksFromFileAsync("dotnet.md");
+            if (contextChunks.Count == 0) contextChunks = results.Take(5).ToList();
         }
         else
         {
@@ -220,21 +233,24 @@ CRITICAL RULES:
 FORMATTING RULES — apply ONLY if the question matches:
 - If question asks about career journey, work history, or companies worked at:
   → List companies MOST RECENT FIRST (Ingenio first, Toyota last)
-  → Format EXACTLY like this — one company per line, use ** ** for bold:
-     **Ingenio** (2020 – present) — Lead Software Engineer — built 2 production RAG systems
-     **Euromonitor International** (2017 – 2020) — Senior Developer — market research platform
-     **Capgemini** (2014 – 2017) — Software Engineer — US healthcare projects
-     **Toyota Tsusho** (2012 – 2014) — Developer — vehicle insurance systems
-  → End with one sentence about what you are looking for next
+  → CRITICAL FORMAT: Every company MUST be on its own line starting with EXACTLY "-- " (dash dash space).
+  → DO NOT use ** bold markers. DO NOT use bullet points. DO NOT use numbered lists.
+  → Example output (copy this exact format):
+-- Ingenio (2020 – present) — Lead Software Engineer — built 2 production RAG systems
+-- Euromonitor International (2017 – 2020) — Senior Developer — market research platform
+-- Capgemini (2014 – 2017) — Software Engineer — US healthcare projects
+-- Toyota Tsusho (2012 – 2014) — Developer — vehicle insurance systems
+  → After the list, add one sentence about what you are looking for next.
 
 - If question asks about recent projects or what you have built at Ingenio:
   → List projects MOST RECENT / MOST IMPACTFUL FIRST
-  → Format EXACTLY like this:
-     **Advisor Feedback Search** — semantic search over 1M+ feedback entries using RAG
-     **Semantic Advisor Search** — matches users to advisors via vector similarity
-     **JWT Authentication Migration** — migrated legacy auth to JWT across all services
-     **Third-Party Platform Integrations** — Zinrelo, Iterable, Zendesk integrations into Keen
-  → One line per project, bold project name, dash, one-line description
+  → CRITICAL FORMAT: Every project MUST be on its own line starting with EXACTLY "-- " (dash dash space).
+  → DO NOT use ** bold markers. DO NOT use bullet points. DO NOT use numbered lists.
+  → Example output (copy this exact format):
+-- Advisor Feedback Search — semantic search over 1M+ feedback entries using RAG
+-- Semantic Advisor Search — matches users to advisors via vector similarity
+-- JWT Authentication Migration — migrated legacy auth to JWT across all services
+-- Third-Party Platform Integrations — Zinrelo, Iterable, Zendesk integrations into Keen
 
 - When mentioning AI experience, always say 'I have built' or 'I have shipped'
   — never 'I am exploring' or 'I am excited about'. The work is done, not planned.
@@ -312,7 +328,19 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
 
                 : null;
 
-            if (isProjectMenu)
+            // isGenericArchRequest checked FIRST — if user asked about architecture,
+            // always show arch pills even if LLM answer happens to include project menu text
+            if (isGenericArchRequest)
+            {
+                followUps = new List<string>
+                {
+                    "📐 Show architecture: Advisor Search",
+                    "📐 Show architecture: Feedback Search",
+                    "📐 Show architecture: Interview Bot",
+                    "📐 Show architecture: JWT Migration",
+                };
+            }
+            else if (isProjectMenu)
             {
                 followUps = new List<string>
                 {
@@ -321,17 +349,6 @@ ANSWER (if this is a follow-up like 'yes', 'tell me more', 'elaborate', continue
                     "🤖 This Interview Bot",
                     "🔐 JWT Auth Migration",
                     "🔗 Third-Party Integrations",
-                };
-            }
-            else if (isGenericArchRequest)
-            {
-                // User explicitly asked to see/explain architecture → show all 4 arch diagram pills
-                followUps = new List<string>
-                {
-                    "📐 Show architecture: Advisor Search",
-                    "📐 Show architecture: Feedback Search",
-                    "📐 Show architecture: Interview Bot",
-                    "📐 Show architecture: JWT Migration",
                 };
             }
             else
