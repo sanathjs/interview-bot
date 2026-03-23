@@ -167,81 +167,131 @@ public class SkillGapService
 
         if (string.IsNullOrEmpty(appId) || string.IsNullOrEmpty(appKey))
         {
-            _logger.LogWarning("Adzuna credentials not configured — skipping");
+            _logger.LogWarning("Adzuna credentials not configured — skipping. " +
+                "Set Adzuna__AppId and Adzuna__AppKey in Railway environment variables.");
             return new();
         }
 
+        _logger.LogInformation("Adzuna fetch starting — AppId: {Id}", appId[..Math.Min(6, appId.Length)] + "***");
+
         var jobs    = new List<JobListing>();
-        var country = "in"; // India — change to "gb" or "us" for other regions
         var encoded = Uri.EscapeDataString(req.Keywords);
-        var location = Uri.EscapeDataString(req.Location);
 
-        // Adzuna paginates at 20 per page — fetch 2 pages for 40 results
-        for (int page = 1; page <= 2; page++)
+        // Adzuna India has very limited listings — try IN first, fall back to GB + US.
+        // We do NOT pass &where= for IN because Adzuna India ignores/rejects location filters.
+        // For GB/US we pass location so results stay relevant to the role.
+        var countries = new[]
         {
-            try
-            {
-                var url = $"https://api.adzuna.com/v1/api/jobs/{country}/search/{page}" +
-                          $"?app_id={appId}&app_key={appKey}" +
-                          $"&what={encoded}&where={location}" +
-                          $"&results_per_page=20&content-type=application/json" +
-                          $"&sort_by=relevance";
+            ("in", ""),                                               // India — no location filter
+            ("gb", Uri.EscapeDataString("United Kingdom")),          // UK fallback
+            ("us", Uri.EscapeDataString("United States")),           // US fallback
+        };
 
-                var resp = await _http.GetAsync(url);
-                if (!resp.IsSuccessStatusCode)
+        foreach (var (country, locationParam) in countries)
+        {
+            var countryJobs = new List<JobListing>();
+
+            for (int page = 1; page <= 2; page++)
+            {
+                try
                 {
-                    _logger.LogWarning("Adzuna returned {Status} on page {Page}",
-                        resp.StatusCode, page);
+                    var whereClause = string.IsNullOrEmpty(locationParam)
+                        ? ""
+                        : $"&where={locationParam}";
+
+                    var url = $"https://api.adzuna.com/v1/api/jobs/{country}/search/{page}" +
+                              $"?app_id={appId}&app_key={appKey}" +
+                              $"&what={encoded}{whereClause}" +
+                              $"&results_per_page=20&content-type=application/json" +
+                              $"&sort_by=relevance";
+
+                    _logger.LogInformation("Adzuna request: {Url}", url.Replace(appKey, "***"));
+
+                    var resp = await _http.GetAsync(url);
+                    var raw  = await resp.Content.ReadAsStringAsync();
+
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        _logger.LogWarning("Adzuna [{Country}] page {Page} returned HTTP {Status}: {Body}",
+                            country, page, (int)resp.StatusCode, raw[..Math.Min(300, raw.Length)]);
+                        break;
+                    }
+
+                    _logger.LogInformation("Adzuna [{Country}] page {Page} raw (first 200): {Raw}",
+                        country, page, raw[..Math.Min(200, raw.Length)]);
+
+                    var doc = JsonDocument.Parse(raw);
+
+                    if (!doc.RootElement.TryGetProperty("results", out var results))
+                    {
+                        _logger.LogWarning("Adzuna [{Country}] page {Page}: no 'results' key in response", country, page);
+                        break;
+                    }
+
+                    var pageCount = 0;
+                    foreach (var item in results.EnumerateArray())
+                    {
+                        try
+                        {
+                            // salary_min / salary_max can be missing OR JSON null — handle both
+                            int? salaryMin = null;
+                            int? salaryMax = null;
+
+                            if (item.TryGetProperty("salary_min", out var sMin) &&
+                                sMin.ValueKind == JsonValueKind.Number)
+                                salaryMin = Convert.ToInt32(sMin.GetDouble());
+
+                            if (item.TryGetProperty("salary_max", out var sMax) &&
+                                sMax.ValueKind == JsonValueKind.Number)
+                                salaryMax = Convert.ToInt32(sMax.GetDouble());
+
+                            var jobId = item.TryGetProperty("id", out var idEl) ? idEl.GetString() : Guid.NewGuid().ToString();
+
+                            countryJobs.Add(new JobListing
+                            {
+                                Source      = "adzuna",
+                                ExternalId  = $"adzuna_{country}_{jobId}",
+                                Title       = item.TryGetProperty("title",        out var t)  ? t.GetString()!  : "",
+                                Description = item.TryGetProperty("description",  out var d)  ? d.GetString()!  : "",
+                                JobUrl      = item.TryGetProperty("redirect_url", out var u)  ? u.GetString()!  : "",
+                                Company     = item.TryGetProperty("company",      out var c) &&
+                                              c.TryGetProperty("display_name",   out var cn) ? cn.GetString()! : "",
+                                Location    = item.TryGetProperty("location",     out var l) &&
+                                              l.TryGetProperty("display_name",   out var ln) ? ln.GetString()! : req.Location,
+                                IsRemote    = false,
+                                SalaryMin   = salaryMin,
+                                SalaryMax   = salaryMax,
+                            });
+                            pageCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Adzuna [{Country}]: failed to parse one job item", country);
+                        }
+                    }
+
+                    _logger.LogInformation("Adzuna [{Country}] page {Page}: parsed {Count} jobs", country, page, pageCount);
+                    await Task.Delay(300);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Adzuna [{Country}] fetch failed on page {Page}", country, page);
                     break;
                 }
-
-                var raw = await resp.Content.ReadAsStringAsync();
-
-                // Adzuna uses camelCase with some pascal — parse manually
-                var doc = JsonDocument.Parse(raw);
-                var results = doc.RootElement.GetProperty("results");
-
-                foreach (var item in results.EnumerateArray())
-                {
-                    try
-                    {
-                        var salaryMin = item.TryGetProperty("salary_min", out var sMin)
-                            ? (int?)Convert.ToInt32(sMin.GetDouble()) : null;
-                        var salaryMax = item.TryGetProperty("salary_max", out var sMax)
-                            ? (int?)Convert.ToInt32(sMax.GetDouble()) : null;
-
-                        jobs.Add(new JobListing
-                        {
-                            Source      = "adzuna",
-                            ExternalId  = $"adzuna_{item.GetProperty("id").GetString()}",
-                            Title       = item.TryGetProperty("title", out var t)       ? t.GetString()! : "",
-                            Description = item.TryGetProperty("description", out var d)  ? d.GetString()! : "",
-                            JobUrl      = item.TryGetProperty("redirect_url", out var u) ? u.GetString()! : "",
-                            Company     = item.TryGetProperty("company", out var c) &&
-                                          c.TryGetProperty("display_name", out var cn)  ? cn.GetString()! : "",
-                            Location    = item.TryGetProperty("location", out var l) &&
-                                          l.TryGetProperty("display_name", out var ln)  ? ln.GetString()! : req.Location,
-                            IsRemote    = false,
-                            SalaryMin   = salaryMin,
-                            SalaryMax   = salaryMax,
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to parse an Adzuna job item");
-                    }
-                }
-
-                await Task.Delay(300); // Be polite to Adzuna
             }
-            catch (Exception ex)
+
+            _logger.LogInformation("Adzuna [{Country}] total: {Count} jobs", country, countryJobs.Count);
+            jobs.AddRange(countryJobs);
+
+            // If India gave decent results, skip the international fallbacks
+            if (country == "in" && countryJobs.Count >= 10)
             {
-                _logger.LogError(ex, "Adzuna fetch failed on page {Page}", page);
+                _logger.LogInformation("Adzuna India returned enough jobs — skipping international fallbacks");
                 break;
             }
         }
 
-        _logger.LogInformation("Adzuna returned {Count} jobs", jobs.Count);
+        _logger.LogInformation("Adzuna total across all countries: {Count} jobs", jobs.Count);
         return jobs;
     }
 
