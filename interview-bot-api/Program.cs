@@ -23,4 +23,6 @@ var app = builder.Build();
 
 app.UseCors();
 app.MapControllers();
+// Keep-alive endpoint — prevents Render free tier cold starts
+app.MapGet("/ping", () => Results.Ok("pong"));
 app.Run();
