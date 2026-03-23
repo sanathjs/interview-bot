@@ -26,7 +26,7 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
 ```
 ┌─────────────────────┐     HTTP      ┌──────────────────────┐
 │   Next.js 14 UI     │ ──────────── │   .NET 8 Web API     │
-│   (Vercel)          │              │   (Railway)           │
+│   (Vercel)          │              │   (Render.com)        │
 └─────────────────────┘              └──────────┬───────────┘
                                                 │
                     ┌───────────────────────────┼──────────────────────┐
@@ -54,7 +54,7 @@ interview-bot/
 │   │   ├── page.tsx                   # Home page
 │   │   ├── chat/page.tsx              # Chat interface
 │   │   ├── prep/page.tsx              # Prep dashboard (PIN protected)
-│   │   ├── skill-gap/page.tsx         # Skill Gap Analyzer ← NEW
+│   │   ├── skill-gap/page.tsx         # Skill Gap Analyzer
 │   │   └── sessions/
 │   │       ├── page.tsx               # Session list
 │   │       └── [id]/page.tsx          # Transcript view
@@ -71,25 +71,31 @@ interview-bot/
 │   │   ├── ChatController.cs
 │   │   ├── TranscribeController.cs
 │   │   ├── IngestionController.cs
-│   │   └── SkillGapController.cs      # ← NEW
+│   │   └── SkillGapController.cs
 │   ├── Services/
 │   │   ├── ChatService.cs
 │   │   ├── KnowledgeSearchService.cs
 │   │   ├── IngestionService.cs
 │   │   ├── EmbeddingService.cs
 │   │   ├── ChunkMetadataHelper.cs
-│   │   └── SkillGapService.cs         # ← NEW
+│   │   └── SkillGapService.cs
 │   ├── Models/
 │   │   ├── ChatModels.cs
 │   │   ├── KnowledgeChunk.cs
-│   │   └── SkillGapModels.cs          # ← NEW
-│   └── knowledge-base/                # Personal KB — .md files
-│       ├── introduction.md
-│       ├── career-journey.md
-│       ├── ai-rag.md
-│       ├── dotnet.md
-│       ├── dotnet-interview-qa.md
-│       └── ...
+│   │   └── SkillGapModels.cs
+│   ├── knowledge-base/                # Personal KB — .md files
+│   │   ├── introduction.md
+│   │   ├── career-journey.md
+│   │   ├── ai-rag.md
+│   │   ├── dotnet.md
+│   │   ├── dotnet-interview-qa.md
+│   │   └── ...
+│   └── Dockerfile                     # Used by Render.com for deployment
+│
+└── docs/
+    ├── schema.sql                     # Core DB schema
+    ├── skill_gap_migration.sql        # Skill Gap tables migration
+    └── RENDER_MIGRATION.md            # Step-by-step Render.com setup guide
 ```
 
 ---
@@ -146,9 +152,9 @@ User enters role keywords + location
         ↓
 POST /api/skill-gap
         ↓
-Adzuna API (India jobs) + Remotive API (remote jobs) fetched in parallel
+Adzuna API (IN → GB → US fallback) + Remotive (remote) fetched in parallel
         ↓
-Groq LLM extracts required / nice-to-have / trending skills from JDs
+Groq LLM extracts required / nice-to-have / trending skills from JDs in batches
         ↓
 Compare extracted skills against Sanath's KB-derived skill profile
         ↓
@@ -182,10 +188,7 @@ Auto-digest toggle → settings stored in user_settings table
 ## 🗄️ Database Schema
 
 ```sql
--- Enable pgvector
 CREATE EXTENSION IF NOT EXISTS vector;
-
--- ── Core interview tables ─────────────────────────────────────────
 
 CREATE TABLE knowledge_chunks (
     id                   SERIAL PRIMARY KEY,
@@ -193,14 +196,14 @@ CREATE TABLE knowledge_chunks (
     section_title        TEXT,
     chunk_text           TEXT,
     chunk_index          INTEGER,
-    embedding            VECTOR(768),       -- body embedding
+    embedding            VECTOR(768),
     topic                TEXT,
     tags                 TEXT[],
     hit_count            INTEGER DEFAULT 0,
     last_used_at         TIMESTAMPTZ,
     created_at           TIMESTAMPTZ DEFAULT NOW(),
-    title_embedding      VECTOR(768),       -- section heading embedded alone
-    questions_embedding  VECTOR(768),       -- 5 AI-generated question variants
+    title_embedding      VECTOR(768),
+    questions_embedding  VECTOR(768),
     questions_text       TEXT[],
     title_word_count     INT
 );
@@ -262,62 +265,22 @@ CREATE TABLE session_analytics (
     duration_minutes     INTEGER
 );
 
--- ── Skill Gap tables (Phase 1) ────────────────────────────────────
+-- Skill Gap tables (run docs/skill_gap_migration.sql)
+CREATE TABLE job_listings ( ... );
+CREATE TABLE job_applications ( ... );
+CREATE TABLE user_settings ( ... );
 
-CREATE TABLE job_listings (
-    id              SERIAL PRIMARY KEY,
-    source          TEXT NOT NULL,          -- 'adzuna' | 'remotive'
-    external_id     TEXT UNIQUE NOT NULL,
-    title           TEXT NOT NULL,
-    company         TEXT NOT NULL DEFAULT '',
-    location        TEXT NOT NULL DEFAULT '',
-    is_remote       BOOLEAN NOT NULL DEFAULT FALSE,
-    salary_min      INTEGER,
-    salary_max      INTEGER,
-    job_url         TEXT,
-    description     TEXT,
-    required_skills JSONB DEFAULT '[]',
-    ats_score       FLOAT DEFAULT 0,
-    match_score     FLOAT DEFAULT 0,
-    fetched_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE job_applications (
-    id              SERIAL PRIMARY KEY,
-    job_id          INTEGER REFERENCES job_listings(id) ON DELETE CASCADE UNIQUE,
-    status          TEXT NOT NULL DEFAULT 'saved',
-                    -- saved | resume_generated | applied | rejected | interview
-    tailored_resume TEXT,
-    cover_letter    TEXT,
-    applied_at      TIMESTAMPTZ,
-    notes           TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE user_settings (
-    key         TEXT PRIMARY KEY,
-    value       TEXT NOT NULL,
-    updated_at  TIMESTAMPTZ DEFAULT NOW()
-);
--- Default settings seeded at migration time:
---   auto_digest_enabled = 'false'
---   digest_keywords     = 'Lead .NET Engineer Senior C# Developer'
---   digest_location     = 'Bengaluru'
-
--- ── HNSW indexes ──────────────────────────────────────────────────
-
+-- HNSW indexes
 CREATE INDEX ON knowledge_chunks USING hnsw (embedding           vector_cosine_ops);
 CREATE INDEX ON knowledge_chunks USING hnsw (title_embedding     vector_cosine_ops);
 CREATE INDEX ON knowledge_chunks USING hnsw (questions_embedding vector_cosine_ops);
-CREATE INDEX ON job_listings (match_score DESC);
-CREATE INDEX ON job_listings (fetched_at  DESC);
 ```
 
 ---
 
 ## 📝 Knowledge Base
 
-14 `.md` files in `interview-bot-api/knowledge-base/`. `answering-guidelines.md` is excluded from search (internal style instructions only).
+14 `.md` files in `interview-bot-api/knowledge-base/`. `answering-guidelines.md` excluded from search.
 
 | File | Chunks | Topic |
 |---|---|---|
@@ -329,8 +292,8 @@ CREATE INDEX ON job_listings (fetched_at  DESC);
 | `dotnet.md` | 6 | Years, strongest areas, design patterns |
 | `leadership.md` | 4 | 3 leadership stories + philosophy |
 | `general-hr.md` | 9 | Strengths, weakness, salary, notice, education |
-| `my-approach.md` | 7 | System design: URL shortener, notifications, rate limiter |
-| `arrays-strings.md` | 7 | DSA: two pointers, sliding window, hashmap, Kadane |
+| `my-approach.md` | 7 | System design examples |
+| `arrays-strings.md` | 7 | DSA: two pointers, sliding window, hashmap |
 | `trees.md` | 6 | BST, traversal, DFS vs BFS |
 | `dynamic-programming.md` | 4 | DP patterns and approach |
 | `complexity-cheatsheet.md` | 4 | Big-O reference |
@@ -338,79 +301,27 @@ CREATE INDEX ON job_listings (fetched_at  DESC);
 
 **Total indexed: 101 chunks across 13 files**
 
-**To add new content:**
-1. Edit or add a `.md` file — use `## Section Title` headings written as the **exact question an interviewer would ask**
-2. Push to GitHub, then re-ingest:
-
-```bash
-curl -X POST https://interview-bot-production.up.railway.app/api/ingest \
-  -H "X-Admin-Key: your-key"
-# ~5 minutes — embeds body + title + generates 5 question variants per chunk
-```
-
 ---
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-| Tool | Version | Purpose |
-|---|---|---|
-| Node.js | 18+ | Frontend |
-| .NET SDK | 8.0 | Backend |
-| PostgreSQL | 16 | Database |
-| pgvector | 0.7 | Vector search |
-| Docker | Optional | DB containerisation |
-
-### 1. Clone
+## 🚀 Getting Started (Local)
 
 ```bash
+# 1. Clone
 git clone https://github.com/sanathjs/interview-bot.git
 cd interview-bot
-```
 
-### 2. Database setup
-
-```bash
-docker run --name interview-bot-db \
-  -e POSTGRES_PASSWORD=postgres123 \
-  -e POSTGRES_DB=interview_bot \
-  -p 5432:5432 \
-  -d pgvector/pgvector:pg16
-
-psql -U postgres -d interview_bot -c "CREATE EXTENSION IF NOT EXISTS vector;"
-```
-
-Run `docs/schema.sql` to create all tables and indexes.
-Run `docs/skill_gap_migration.sql` to create the Skill Gap tables.
-
-### 3. Backend
-
-```bash
+# 2. Backend
 cd interview-bot-api
 cp appsettings.example.json appsettings.json
-# Fill in your values (see Configuration below)
-dotnet restore
-dotnet run
-# Runs on http://localhost:5267
-```
+dotnet restore && dotnet run          # http://localhost:5267
 
-### 4. Frontend
-
-```bash
+# 3. Frontend (new terminal)
 cd interview-bot-ui
 cp .env.example .env.local
-# Fill in values
-npm install
-npm run dev
-# Runs on http://localhost:3000
-```
+npm install && npm run dev            # http://localhost:3000
 
-### 5. Ingest KB
-
-```bash
+# 4. Ingest KB
 curl -X POST http://localhost:5267/api/ingest -H "X-Admin-Key: your-key"
-# Takes ~5 minutes locally (3 embeddings + 1 Groq call per chunk)
 ```
 
 ---
@@ -421,12 +332,10 @@ curl -X POST http://localhost:5267/api/ingest -H "X-Admin-Key: your-key"
 
 ```json
 {
-  "DATABASE_URL": "Host=localhost;Port=5432;Database=interview_bot;Username=postgres;Password=postgres123",
+  "DATABASE_URL": "Host=localhost;...",
   "ADMIN_INGEST_KEY": "your-secret-key",
   "LlmProvider": "groq",
-  "HuggingFace": {
-    "ApiKey": "hf_..."
-  },
+  "HuggingFace": { "ApiKey": "hf_..." },
   "Groq": {
     "ApiKey": "gsk_...",
     "Model": "llama-3.3-70b-versatile",
@@ -446,19 +355,29 @@ NEXT_PUBLIC_API_URL=http://localhost:5267
 NEXT_PUBLIC_PREP_PIN=1234
 ```
 
-### Railway Environment Variables
+### Render Environment Variables
 
 ```
-DATABASE_URL             = (Supabase pooler connection string)
-ADMIN_INGEST_KEY         = your-secret-key
-LlmProvider              = groq
-Groq__ApiKey             = gsk_...
-Groq__Model              = llama-3.3-70b-versatile
-Groq__BaseUrl            = https://api.groq.com/openai/v1
-HuggingFace__ApiKey      = hf_...
-Adzuna__AppId            = your_adzuna_app_id
-Adzuna__AppKey           = your_adzuna_app_key
-ASPNETCORE_URLS          = http://+:8080
+DATABASE_URL         = (Supabase pooler connection string)
+ADMIN_INGEST_KEY     = your-secret-key
+LlmProvider          = groq
+Groq__ApiKey         = gsk_...
+Groq__Model          = llama-3.3-70b-versatile
+Groq__BaseUrl        = https://api.groq.com/openai/v1
+HuggingFace__ApiKey  = hf_...
+Adzuna__AppId        = your_adzuna_app_id
+Adzuna__AppKey       = your_adzuna_app_key
+ASPNETCORE_URLS      = http://+:10000
+PORT                 = 10000
+```
+
+> Render Docker services use port **10000** by default.
+
+### Vercel Environment Variables
+
+```
+NEXT_PUBLIC_API_URL  = https://your-app.onrender.com
+NEXT_PUBLIC_PREP_PIN = your-pin
 ```
 
 ---
@@ -469,7 +388,7 @@ ASPNETCORE_URLS          = http://+:8080
 |---|---|---|---|
 | Groq | LLM chat + Whisper STT | console.groq.com | Free |
 | HuggingFace | BAAI/bge-base-en-v1.5 embeddings | huggingface.co/settings/tokens | Free |
-| Adzuna | Job search API (India + global) | developer.adzuna.com | Free (1000 calls/day) |
+| Adzuna | Job search API (India + global fallback) | developer.adzuna.com | Free (1000 calls/day) |
 | Remotive | Remote job search | remotive.com/api | Free, no key needed |
 
 ---
@@ -489,6 +408,7 @@ ASPNETCORE_URLS          = http://+:8080
 | DELETE | `/api/unanswered/{id}` | Delete question | None |
 | POST | `/api/transcribe` | Audio → Groq Whisper → text | None |
 | POST | `/api/ingest` | Re-ingest all KB files | X-Admin-Key header |
+| GET | `/ping` | Health check / keep-alive for Render | None |
 
 ### Skill Gap
 
@@ -504,25 +424,28 @@ ASPNETCORE_URLS          = http://+:8080
 
 ## 🌐 Deployment
 
-### Free Stack (current)
+### Free Stack — $0/month forever
 
-| Layer | Platform | Cost |
-|---|---|---|
-| Frontend | Vercel | Free |
-| Backend | Railway | Free ($5 credit/mo) |
-| Database | Supabase | Free (500MB) |
-| Embeddings | HuggingFace | Free |
-| LLM + STT | Groq | Free |
-| Job Search | Adzuna + Remotive | Free |
-| **Total** | | **$0/month** |
+| Layer | Platform | Cost | Notes |
+|---|---|---|---|
+| Frontend | Vercel | Free forever | Auto-deploys on git push |
+| Backend | Render.com | Free forever | Spins down after 15 min idle |
+| Database | Supabase | Free forever | 500MB limit |
+| Embeddings | HuggingFace | Free forever | |
+| LLM + STT | Groq | Free forever | |
+| Job Search | Adzuna + Remotive | Free forever | 1000 calls/day |
+| Keep-alive | cron-job.org | Free forever | Pings `/ping` every 10 min |
+| **Total** | | **$0/month** | |
+
+> **Cold start:** Render free tier spins down after 15 min idle. First request takes ~30s. Set up a [cron-job.org](https://cron-job.org) ping to `https://your-app.onrender.com/ping` every 10 minutes to prevent this completely.
 
 ### Production Stack (future)
 
 | Layer | Platform | Cost |
 |---|---|---|
-| Frontend | Vercel / Azure Static Web Apps | Free |
-| Backend | Azure App Service B1 | ~$13/mo |
-| Database | Azure PostgreSQL Flexible | ~$14/mo |
+| Frontend | Vercel | Free |
+| Backend | Render Starter | ~$7/mo (always on) |
+| Database | Supabase Pro | ~$25/mo |
 | Embeddings | OpenAI text-embedding-3-small | ~$0.01/mo |
 | LLM | gpt-4o-mini | ~$1–3/mo |
 
@@ -530,18 +453,21 @@ ASPNETCORE_URLS          = http://+:8080
 
 ```bash
 # 1. Run Skill Gap migration in Supabase SQL Editor
-#    (docs/skill_gap_migration.sql)
+#    Copy contents of docs/skill_gap_migration.sql → run in Supabase
 
-# 2. Add Adzuna keys to Railway environment variables
+# 2. Set up Render (see docs/RENDER_MIGRATION.md for full steps)
 
-# 3. Push code — Railway + Vercel auto-deploy on push
+# 3. Push code — Render + Vercel auto-deploy on push
 git add .
-git commit -m "feat: skill gap analyzer phase 1"
+git commit -m "your message"
 git push origin main
 
-# 4. Re-ingest KB if any .md files were changed
-curl -X POST https://interview-bot-production.up.railway.app/api/ingest \
+# 4. Re-ingest KB after any .md changes
+curl -X POST https://your-app.onrender.com/api/ingest \
   -H "X-Admin-Key: your-key"
+
+# 5. Update NEXT_PUBLIC_API_URL in Vercel → Settings → Environment Variables
+#    Set to your Render URL
 ```
 
 ---
@@ -549,33 +475,33 @@ curl -X POST https://interview-bot-production.up.railway.app/api/ingest \
 ## 🛠️ Development Notes
 
 - `session_analytics` has no auto-trigger — stats fall back to live subqueries from `chat_messages`
-- `answering-guidelines.md` is excluded from search at ingest time — do not rename it
-- Voice input uses `MediaRecorder` → Groq Whisper → auto-sends transcribed text
-- Voice playback uses `window.speechSynthesis` (browser TTS, no API needed)
+- `answering-guidelines.md` excluded from search at ingest time — do not rename it
+- Voice input: `MediaRecorder` → Groq Whisper → auto-sends transcribed text
+- Voice playback: `window.speechSynthesis` (browser TTS, no API needed)
 - Prep dashboard is PIN-protected via `NEXT_PUBLIC_PREP_PIN` env variable
 - Admin gear icon visible only when `localStorage.ib_role === "admin"`
-- Re-ingest required after any KB change — takes ~5 min for 101 chunks
+- Re-ingest required after any KB change — ~5 min for 101 chunks
 - KB headings should be written as the **exact question an interviewer would ask**
-- Prompt injection is blocked pre-LLM via `IsPromptInjection()` in `ChatService.cs` — 24 phrases detected
-- Adzuna free tier gives 1000 API calls/day — more than enough for daily digest use
-- Remotive requires no API key — filter applied server-side to only return .NET/backend relevant jobs
-- `job_listings` uses `external_id` as a unique key — re-running analysis updates scores without duplicates
-- Auto-digest toggle is stored in `user_settings` table — survives Railway restarts
+- Prompt injection blocked pre-LLM via `IsPromptInjection()` — 24 phrases detected
+- Adzuna fetches IN → GB → US; falls back to international if India returns fewer than 10 jobs
+- `job_listings.external_id` is unique — re-running analysis updates scores, no duplicates
+- Render uses port `10000` — set `ASPNETCORE_URLS=http://+:10000` and `PORT=10000`
+- Keep Render warm: cron-job.org pings `/ping` every 10 minutes
 
 ---
 
 ## 🗺️ Roadmap
 
-### Phase 2 — Resume & Cover Letter (Next)
+### Phase 2 — Resume & Cover Letter
 - [ ] Upload PDF resume → ingest into KB as `resume.md`
-- [ ] `POST /api/skill-gap/resume` → Groq tailors resume to specific JD → `.docx` download
-- [ ] `POST /api/skill-gap/cover` → Groq writes cover letter per JD → `.docx` download
-- [ ] ATS score shown per job with keyword breakdown
+- [ ] `POST /api/skill-gap/resume` → Groq tailors resume to JD → `.docx` download
+- [ ] `POST /api/skill-gap/cover` → Groq writes cover letter → `.docx` download
+- [ ] ATS score with keyword breakdown per job
 
 ### Phase 3 — Tracking & Automation
 - [ ] Job application status board (saved → applied → interview → offer)
-- [ ] `IHostedService` daily background job (9am fetch + score)
-- [ ] Auto-digest ON/OFF — when enabled, top 10 matched jobs saved daily automatically
+- [ ] `IHostedService` daily background job at 9am
+- [ ] Auto-digest — top 10 matched jobs saved daily when enabled
 
 ### Future
 - [ ] End session UI — star rating + notes modal
@@ -587,12 +513,12 @@ curl -X POST https://interview-bot-production.up.railway.app/api/ingest \
 
 ## 🔐 Security
 
-- `appsettings.json` and `.env.local` are gitignored
-- Old exposed keys rotated and git history purged via `filter-branch`
-- `appsettings.example.json` and `.env.example` contain no real values
+- `appsettings.json` and `.env.local` gitignored
+- Old exposed keys rotated; git history purged via `filter-branch`
+- `appsettings.example.json` and `.env.example` have no real values
 - Prep dashboard PIN-protected via env variable
 - API endpoints have no auth currently — add JWT for production
-- Prompt injection blocked pre-LLM: 24 injection phrases detected and deflected in `ChatService.cs`
+- Prompt injection blocked pre-LLM: 24 phrases in `ChatService.cs`
 - System prompt never revealed — LLM-level security rules in Groq system message
 
 ---
