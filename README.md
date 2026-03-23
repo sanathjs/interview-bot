@@ -1,6 +1,6 @@
 # 🤖 Interview Bot
 
-An AI-powered interview assistant that represents **Sanath Kumar J S** in technical interviews using a personal knowledge base, multi-signal RAG search, and real-time voice interaction.
+An AI-powered interview assistant that represents **Sanath Kumar J S** in technical interviews using a personal knowledge base, multi-signal RAG search, real-time voice interaction, and a live job market skill gap analyzer.
 
 > Built with Next.js 14 · .NET 8 · PostgreSQL + pgvector · Groq LLM · HuggingFace Embeddings · Groq Whisper STT
 
@@ -15,6 +15,8 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
 - 📚 **Prep dashboard** — Review, answer, and promote unanswered questions to KB
 - 📋 **Session history** — Browse past interviews with full transcripts
 - 📊 **Confidence scoring** — Every answer shows confidence % from weighted vector similarity
+- 🔒 **Security** — Prompt injection detection, system prompt protection, persona guard
+- 🎯 **Skill Gap Analyzer** — Live job search from Adzuna + Remotive, skill matching, salary insights, company rankings, auto-digest toggle
 - 📱 **Mobile responsive** — Works on all screen sizes
 
 ---
@@ -27,13 +29,18 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
 │   (Vercel)          │              │   (Railway)           │
 └─────────────────────┘              └──────────┬───────────┘
                                                 │
-                              ┌─────────────────┼─────────────────┐
-                              │                 │                 │
-                    ┌─────────▼──────┐  ┌───────▼──────┐  ┌─────▼───────┐
-                    │  PostgreSQL 16  │  │  Groq Cloud  │  │ HuggingFace │
-                    │  + pgvector    │  │  LLM + STT   │  │  Embeddings │
-                    │  (Supabase)    │  │  (Free tier) │  │  (Free tier)│
-                    └────────────────┘  └──────────────┘  └─────────────┘
+                    ┌───────────────────────────┼──────────────────────┐
+                    │                           │                      │
+          ┌─────────▼──────┐         ┌──────────▼─────┐     ┌────────▼──────┐
+          │  PostgreSQL 16  │         │   Groq Cloud   │     │  HuggingFace  │
+          │  + pgvector    │         │  LLM + STT     │     │  Embeddings   │
+          │  (Supabase)    │         │  (Free tier)   │     │  (Free tier)  │
+          └────────────────┘         └────────────────┘     └───────────────┘
+                    │
+          ┌─────────▼──────┐         ┌────────────────┐
+          │  Adzuna API    │         │  Remotive API  │
+          │  (Job search)  │         │  (Remote jobs) │
+          └────────────────┘         └────────────────┘
 ```
 
 ---
@@ -42,37 +49,41 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
 
 ```
 interview-bot/
-├── interview-bot-ui/          # Next.js 14 frontend
+├── interview-bot-ui/                  # Next.js 14 frontend
 │   ├── app/
-│   │   ├── page.tsx           # Home page
-│   │   ├── chat/page.tsx      # Chat interface
-│   │   ├── prep/page.tsx      # Prep dashboard (PIN protected)
+│   │   ├── page.tsx                   # Home page
+│   │   ├── chat/page.tsx              # Chat interface
+│   │   ├── prep/page.tsx              # Prep dashboard (PIN protected)
+│   │   ├── skill-gap/page.tsx         # Skill Gap Analyzer ← NEW
 │   │   └── sessions/
-│   │       ├── page.tsx       # Session list
-│   │       └── [id]/page.tsx  # Transcript view
+│   │       ├── page.tsx               # Session list
+│   │       └── [id]/page.tsx          # Transcript view
 │   ├── components/
 │   │   ├── Navbar.tsx
 │   │   └── chat/
 │   │       ├── InputBar.tsx
 │   │       ├── MessageBubble.tsx
 │   │       └── TypingIndicator.tsx
-│   └── lib/api.ts
+│   └── lib/api.ts                     # All fetch wrappers
 │
-├── interview-bot-api/         # .NET 8 Web API
+├── interview-bot-api/                 # .NET 8 Web API
 │   ├── Controllers/
 │   │   ├── ChatController.cs
 │   │   ├── TranscribeController.cs
-│   │   └── IngestionController.cs
+│   │   ├── IngestionController.cs
+│   │   └── SkillGapController.cs      # ← NEW
 │   ├── Services/
 │   │   ├── ChatService.cs
 │   │   ├── KnowledgeSearchService.cs
 │   │   ├── IngestionService.cs
 │   │   ├── EmbeddingService.cs
-│   │   └── ChunkMetadataHelper.cs
+│   │   ├── ChunkMetadataHelper.cs
+│   │   └── SkillGapService.cs         # ← NEW
 │   ├── Models/
 │   │   ├── ChatModels.cs
-│   │   └── KnowledgeChunk.cs
-│   └── knowledge-base/        # Personal KB — .md files
+│   │   ├── KnowledgeChunk.cs
+│   │   └── SkillGapModels.cs          # ← NEW
+│   └── knowledge-base/                # Personal KB — .md files
 │       ├── introduction.md
 │       ├── career-journey.md
 │       ├── ai-rag.md
@@ -120,9 +131,51 @@ Save to chat_messages with confidence score
 
 | Signal | Weight | Purpose |
 |---|---|---|
-| `questions_embedding` | **0.45** | AI generated 5 question variants per chunk at ingest time. Question-to-question matching is the most accurate signal — same vector space as the query. Solves the Q↔A vector space mismatch problem. |
-| `title_embedding` | **0.30 / 0.15** | Section heading embedded alone (not diluted by body). Adaptive: 5+ word headings (e.g. "Tell Me About Yourself") get 0.30 weight; short headings (e.g. "Who I Am") get 0.15. |
-| `body_embedding` | **0.25 / 0.40** | Semantic content of the full chunk. Safety net for paraphrasing and technical knowledge questions. Gets higher weight when title is short. |
+| `questions_embedding` | **0.45** | 5 AI-generated question variants per chunk at ingest time. Q↔Q matching is the most accurate signal — solves the Q↔A vector space mismatch. |
+| `title_embedding` | **0.30 / 0.15** | Section heading embedded alone. Adaptive: 5+ word headings get 0.30; short headings get 0.15. |
+| `body_embedding` | **0.25 / 0.40** | Semantic content of the full chunk. Safety net for paraphrasing. Gets higher weight when title is short. |
+
+---
+
+## 🎯 Skill Gap Analyzer
+
+Live job market analysis comparing Sanath's profile against current job postings.
+
+```
+User enters role keywords + location
+        ↓
+POST /api/skill-gap
+        ↓
+Adzuna API (India jobs) + Remotive API (remote jobs) fetched in parallel
+        ↓
+Groq LLM extracts required / nice-to-have / trending skills from JDs
+        ↓
+Compare extracted skills against Sanath's KB-derived skill profile
+        ↓
+Score each job:
+  ATS Score   = keyword match % (Sanath's skills vs JD text)
+  Match Score = required skill overlap %
+        ↓
+Return:
+  - Ranked job listings with ATS + match scores
+  - Matched skills ✅ | Missing skills ❌ | Trending skills 🔥
+  - Salary range (min / median / max from Adzuna data)
+  - Top hiring companies ranked by job count
+        ↓
+Jobs persisted to DB (job_listings table)
+User can save jobs → tracked in job_applications table
+Auto-digest toggle → settings stored in user_settings table
+```
+
+### Skill Gap API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/skill-gap` | Run full analysis — fetch jobs + gap report |
+| POST | `/api/skill-gap/save-job` | Save / update job application status |
+| GET | `/api/skill-gap/saved-jobs` | List all saved + tracked jobs |
+| GET | `/api/skill-gap/settings` | Get user settings (auto-digest, keywords) |
+| POST | `/api/skill-gap/settings` | Update user settings |
 
 ---
 
@@ -132,24 +185,24 @@ Save to chat_messages with confidence score
 -- Enable pgvector
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- Core KB table
+-- ── Core interview tables ─────────────────────────────────────────
+
 CREATE TABLE knowledge_chunks (
     id                   SERIAL PRIMARY KEY,
     source_file          TEXT,
     section_title        TEXT,
-    chunk_text           TEXT,              -- Topic + Section + body (body embedding)
+    chunk_text           TEXT,
     chunk_index          INTEGER,
     embedding            VECTOR(768),       -- body embedding
     topic                TEXT,
-    tags                 TEXT[],            -- keyword tags for soft boost
+    tags                 TEXT[],
     hit_count            INTEGER DEFAULT 0,
     last_used_at         TIMESTAMPTZ,
     created_at           TIMESTAMPTZ DEFAULT NOW(),
-    -- ── Added for 3-signal search ─────────────────────────────────────
     title_embedding      VECTOR(768),       -- section heading embedded alone
-    questions_embedding  VECTOR(768),       -- 5 AI-generated question variants joined + embedded
-    questions_text       TEXT[],            -- raw questions (for inspection in Supabase)
-    title_word_count     INT                -- drives adaptive title weight
+    questions_embedding  VECTOR(768),       -- 5 AI-generated question variants
+    questions_text       TEXT[],
+    title_word_count     INT
 );
 
 CREATE TABLE interview_sessions (
@@ -169,10 +222,10 @@ CREATE TABLE chat_messages (
     id                SERIAL PRIMARY KEY,
     session_id        INTEGER REFERENCES interview_sessions(id),
     sequence_number   INTEGER,
-    role              TEXT,                 -- 'interviewer' or 'bot'
+    role              TEXT,
     message_text      TEXT,
     confidence_score  FLOAT,
-    answer_source     TEXT,                 -- knowledge_base | not_found | llm_general | fallback_ai
+    answer_source     TEXT,
     fallback_provider TEXT,
     response_time_ms  INTEGER,
     was_helpful       BOOLEAN,
@@ -190,9 +243,9 @@ CREATE TABLE unanswered_questions (
     priority            TEXT DEFAULT 'low',
     sanath_answer       TEXT,
     kb_chunk_id         INTEGER REFERENCES knowledge_chunks(id),
-    question_category   TEXT,              -- added via ALTER TABLE
-    sanath_answered_at  TIMESTAMPTZ,       -- added via ALTER TABLE
-    updated_at          TIMESTAMPTZ,       -- added via ALTER TABLE
+    question_category   TEXT,
+    sanath_answered_at  TIMESTAMPTZ,
+    updated_at          TIMESTAMPTZ,
     first_asked_at      TIMESTAMPTZ DEFAULT NOW(),
     last_asked_at       TIMESTAMPTZ DEFAULT NOW()
 );
@@ -209,10 +262,55 @@ CREATE TABLE session_analytics (
     duration_minutes     INTEGER
 );
 
--- HNSW indexes for fast vector search
-CREATE INDEX ON knowledge_chunks USING hnsw (embedding          vector_cosine_ops);
-CREATE INDEX ON knowledge_chunks USING hnsw (title_embedding    vector_cosine_ops);
+-- ── Skill Gap tables (Phase 1) ────────────────────────────────────
+
+CREATE TABLE job_listings (
+    id              SERIAL PRIMARY KEY,
+    source          TEXT NOT NULL,          -- 'adzuna' | 'remotive'
+    external_id     TEXT UNIQUE NOT NULL,
+    title           TEXT NOT NULL,
+    company         TEXT NOT NULL DEFAULT '',
+    location        TEXT NOT NULL DEFAULT '',
+    is_remote       BOOLEAN NOT NULL DEFAULT FALSE,
+    salary_min      INTEGER,
+    salary_max      INTEGER,
+    job_url         TEXT,
+    description     TEXT,
+    required_skills JSONB DEFAULT '[]',
+    ats_score       FLOAT DEFAULT 0,
+    match_score     FLOAT DEFAULT 0,
+    fetched_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE job_applications (
+    id              SERIAL PRIMARY KEY,
+    job_id          INTEGER REFERENCES job_listings(id) ON DELETE CASCADE UNIQUE,
+    status          TEXT NOT NULL DEFAULT 'saved',
+                    -- saved | resume_generated | applied | rejected | interview
+    tailored_resume TEXT,
+    cover_letter    TEXT,
+    applied_at      TIMESTAMPTZ,
+    notes           TEXT,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE user_settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+-- Default settings seeded at migration time:
+--   auto_digest_enabled = 'false'
+--   digest_keywords     = 'Lead .NET Engineer Senior C# Developer'
+--   digest_location     = 'Bengaluru'
+
+-- ── HNSW indexes ──────────────────────────────────────────────────
+
+CREATE INDEX ON knowledge_chunks USING hnsw (embedding           vector_cosine_ops);
+CREATE INDEX ON knowledge_chunks USING hnsw (title_embedding     vector_cosine_ops);
 CREATE INDEX ON knowledge_chunks USING hnsw (questions_embedding vector_cosine_ops);
+CREATE INDEX ON job_listings (match_score DESC);
+CREATE INDEX ON job_listings (fetched_at  DESC);
 ```
 
 ---
@@ -223,32 +321,31 @@ CREATE INDEX ON knowledge_chunks USING hnsw (questions_embedding vector_cosine_o
 
 | File | Chunks | Topic |
 |---|---|---|
-| `introduction.md` | 7 | Who I am, Tell Me About Yourself, career summary, specialization |
-| `career-journey.md` | 5 | Toyota Tsusho, Capgemini, Euromonitor, Ingenio, why looking |
-| `recent-project.md` | 11 | Keen product, RAG systems, JWT migration, integrations |
-| `ai-rag.md` | 13 | 3 production RAG pipelines, how each works, tech decisions |
-| `dotnet-interview-qa.md` | 20 | 20 Q&A pairs: DI, async/await, GC, EF Core, Polly, records etc. |
-| `dotnet.md` | 6 | Years, what I build, strongest areas, design patterns |
+| `introduction.md` | 7 | Who I am, career summary, specialization |
+| `career-journey.md` | 5 | Toyota Tsusho, Capgemini, Euromonitor, Ingenio |
+| `recent-project.md` | 11 | RAG systems, JWT migration, integrations |
+| `ai-rag.md` | 13 | 3 production RAG pipelines, tech decisions |
+| `dotnet-interview-qa.md` | 20 | 20 Q&A pairs: DI, async/await, GC, EF Core, Polly |
+| `dotnet.md` | 6 | Years, strongest areas, design patterns |
 | `leadership.md` | 4 | 3 leadership stories + philosophy |
 | `general-hr.md` | 9 | Strengths, weakness, salary, notice, education |
-| `my-approach.md` | 7 | System design: URL shortener, notifications, rate limiter, chat |
+| `my-approach.md` | 7 | System design: URL shortener, notifications, rate limiter |
 | `arrays-strings.md` | 7 | DSA: two pointers, sliding window, hashmap, Kadane |
 | `trees.md` | 6 | BST, traversal, DFS vs BFS |
-| `dynamic-programming.md` | 4 | DP identification, approach, patterns |
+| `dynamic-programming.md` | 4 | DP patterns and approach |
 | `complexity-cheatsheet.md` | 4 | Big-O reference |
-| `answering-guidelines.md` | — | EXCLUDED — internal instructions |
+| `answering-guidelines.md` | — | EXCLUDED — internal prompt instructions |
 
 **Total indexed: 101 chunks across 13 files**
 
 **To add new content:**
-1. Edit or add a `.md` file — use `## Section Title` headings
-2. Write headings as the **exact question an interviewer would ask** (improves title + questions embedding match)
-3. Push to GitHub, then re-ingest:
+1. Edit or add a `.md` file — use `## Section Title` headings written as the **exact question an interviewer would ask**
+2. Push to GitHub, then re-ingest:
 
 ```bash
 curl -X POST https://interview-bot-production.up.railway.app/api/ingest \
   -H "X-Admin-Key: your-key"
-# Takes ~5 minutes — embeds body + title + generates 5 question variants per chunk
+# ~5 minutes — embeds body + title + generates 5 question variants per chunk
 ```
 
 ---
@@ -285,13 +382,14 @@ psql -U postgres -d interview_bot -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
 Run `docs/schema.sql` to create all tables and indexes.
+Run `docs/skill_gap_migration.sql` to create the Skill Gap tables.
 
 ### 3. Backend
 
 ```bash
 cd interview-bot-api
 cp appsettings.example.json appsettings.json
-# Fill in your values
+# Fill in your values (see Configuration below)
 dotnet restore
 dotnet run
 # Runs on http://localhost:5267
@@ -312,7 +410,7 @@ npm run dev
 
 ```bash
 curl -X POST http://localhost:5267/api/ingest -H "X-Admin-Key: your-key"
-# Takes ~5 minutes locally
+# Takes ~5 minutes locally (3 embeddings + 1 Groq call per chunk)
 ```
 
 ---
@@ -333,6 +431,10 @@ curl -X POST http://localhost:5267/api/ingest -H "X-Admin-Key: your-key"
     "ApiKey": "gsk_...",
     "Model": "llama-3.3-70b-versatile",
     "BaseUrl": "https://api.groq.com/openai/v1"
+  },
+  "Adzuna": {
+    "AppId":  "your_adzuna_app_id",
+    "AppKey": "your_adzuna_app_key"
   }
 }
 ```
@@ -344,9 +446,37 @@ NEXT_PUBLIC_API_URL=http://localhost:5267
 NEXT_PUBLIC_PREP_PIN=1234
 ```
 
+### Railway Environment Variables
+
+```
+DATABASE_URL             = (Supabase pooler connection string)
+ADMIN_INGEST_KEY         = your-secret-key
+LlmProvider              = groq
+Groq__ApiKey             = gsk_...
+Groq__Model              = llama-3.3-70b-versatile
+Groq__BaseUrl            = https://api.groq.com/openai/v1
+HuggingFace__ApiKey      = hf_...
+Adzuna__AppId            = your_adzuna_app_id
+Adzuna__AppKey           = your_adzuna_app_key
+ASPNETCORE_URLS          = http://+:8080
+```
+
+---
+
+## 🔑 API Keys Required
+
+| Service | Purpose | Get it at | Cost |
+|---|---|---|---|
+| Groq | LLM chat + Whisper STT | console.groq.com | Free |
+| HuggingFace | BAAI/bge-base-en-v1.5 embeddings | huggingface.co/settings/tokens | Free |
+| Adzuna | Job search API (India + global) | developer.adzuna.com | Free (1000 calls/day) |
+| Remotive | Remote job search | remotive.com/api | Free, no key needed |
+
 ---
 
 ## 📡 API Endpoints
+
+### Chat & Sessions
 
 | Method | Path | Description | Auth |
 |---|---|---|---|
@@ -359,6 +489,16 @@ NEXT_PUBLIC_PREP_PIN=1234
 | DELETE | `/api/unanswered/{id}` | Delete question | None |
 | POST | `/api/transcribe` | Audio → Groq Whisper → text | None |
 | POST | `/api/ingest` | Re-ingest all KB files | X-Admin-Key header |
+
+### Skill Gap
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| POST | `/api/skill-gap` | Fetch jobs + run full gap analysis | None |
+| POST | `/api/skill-gap/save-job` | Save / update job application status | None |
+| GET | `/api/skill-gap/saved-jobs` | List all saved + tracked jobs | None |
+| GET | `/api/skill-gap/settings` | Get user settings | None |
+| POST | `/api/skill-gap/settings` | Update user settings | None |
 
 ---
 
@@ -373,6 +513,7 @@ NEXT_PUBLIC_PREP_PIN=1234
 | Database | Supabase | Free (500MB) |
 | Embeddings | HuggingFace | Free |
 | LLM + STT | Groq | Free |
+| Job Search | Adzuna + Remotive | Free |
 | **Total** | | **$0/month** |
 
 ### Production Stack (future)
@@ -385,18 +526,74 @@ NEXT_PUBLIC_PREP_PIN=1234
 | Embeddings | OpenAI text-embedding-3-small | ~$0.01/mo |
 | LLM | gpt-4o-mini | ~$1–3/mo |
 
+### Deploy Checklist
+
+```bash
+# 1. Run Skill Gap migration in Supabase SQL Editor
+#    (docs/skill_gap_migration.sql)
+
+# 2. Add Adzuna keys to Railway environment variables
+
+# 3. Push code — Railway + Vercel auto-deploy on push
+git add .
+git commit -m "feat: skill gap analyzer phase 1"
+git push origin main
+
+# 4. Re-ingest KB if any .md files were changed
+curl -X POST https://interview-bot-production.up.railway.app/api/ingest \
+  -H "X-Admin-Key: your-key"
+```
+
 ---
 
 ## 🛠️ Development Notes
 
 - `session_analytics` has no auto-trigger — stats fall back to live subqueries from `chat_messages`
-- `answering-guidelines.md` is excluded from search at ingest time and from SQL queries — do not rename it
+- `answering-guidelines.md` is excluded from search at ingest time — do not rename it
 - Voice input uses `MediaRecorder` → Groq Whisper → auto-sends transcribed text
 - Voice playback uses `window.speechSynthesis` (browser TTS, no API needed)
 - Prep dashboard is PIN-protected via `NEXT_PUBLIC_PREP_PIN` env variable
 - Admin gear icon visible only when `localStorage.ib_role === "admin"`
-- Re-ingest required after any KB change — takes ~5 min for 101 chunks (3 embeddings + 1 Groq call per chunk)
-- KB headings should be written as the **exact question** an interviewer would ask — this maximises title and questions embedding accuracy
+- Re-ingest required after any KB change — takes ~5 min for 101 chunks
+- KB headings should be written as the **exact question an interviewer would ask**
+- Prompt injection is blocked pre-LLM via `IsPromptInjection()` in `ChatService.cs` — 24 phrases detected
+- Adzuna free tier gives 1000 API calls/day — more than enough for daily digest use
+- Remotive requires no API key — filter applied server-side to only return .NET/backend relevant jobs
+- `job_listings` uses `external_id` as a unique key — re-running analysis updates scores without duplicates
+- Auto-digest toggle is stored in `user_settings` table — survives Railway restarts
+
+---
+
+## 🗺️ Roadmap
+
+### Phase 2 — Resume & Cover Letter (Next)
+- [ ] Upload PDF resume → ingest into KB as `resume.md`
+- [ ] `POST /api/skill-gap/resume` → Groq tailors resume to specific JD → `.docx` download
+- [ ] `POST /api/skill-gap/cover` → Groq writes cover letter per JD → `.docx` download
+- [ ] ATS score shown per job with keyword breakdown
+
+### Phase 3 — Tracking & Automation
+- [ ] Job application status board (saved → applied → interview → offer)
+- [ ] `IHostedService` daily background job (9am fetch + score)
+- [ ] Auto-digest ON/OFF — when enabled, top 10 matched jobs saved daily automatically
+
+### Future
+- [ ] End session UI — star rating + notes modal
+- [ ] Analytics dashboard — KB hit rate, weak topics, confidence trends
+- [ ] ElevenLabs voice cloning (~$6/mo)
+- [ ] Upgrade embeddings to OpenAI `text-embedding-3-small`
+
+---
+
+## 🔐 Security
+
+- `appsettings.json` and `.env.local` are gitignored
+- Old exposed keys rotated and git history purged via `filter-branch`
+- `appsettings.example.json` and `.env.example` contain no real values
+- Prep dashboard PIN-protected via env variable
+- API endpoints have no auth currently — add JWT for production
+- Prompt injection blocked pre-LLM: 24 injection phrases detected and deflected in `ChatService.cs`
+- System prompt never revealed — LLM-level security rules in Groq system message
 
 ---
 

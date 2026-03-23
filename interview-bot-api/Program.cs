@@ -7,6 +7,7 @@ builder.Services.AddSingleton<EmbeddingService>();
 builder.Services.AddSingleton<IngestionService>();
 builder.Services.AddSingleton<KnowledgeSearchService>();
 builder.Services.AddSingleton<ChatService>();
+builder.Services.AddScoped<SkillGapService>();
 
 // Allow CORS for Next.js frontend later
 builder.Services.AddCors(options =>

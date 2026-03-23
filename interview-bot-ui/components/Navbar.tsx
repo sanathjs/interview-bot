@@ -35,6 +35,13 @@ const adminLinks = [
       <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>,
   },
+  {
+    href: "/skill-gap", label: "Skill Gap",
+    icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"
+               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>,
+  },
 ];
 
 export default function Navbar() {
