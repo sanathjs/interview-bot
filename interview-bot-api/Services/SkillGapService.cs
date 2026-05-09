@@ -11,7 +11,7 @@ public class SkillGapService
     private readonly IConfiguration       _config;
     private readonly HttpClient           _http;
     private readonly ILogger<SkillGapService> _logger;
-    private readonly string               _connString;
+    private readonly DatabaseConnectionManager _dbManager;
 
     // Sanath's known skill profile — extracted from KB files.
     // This is the source of truth for "what Sanath knows".
@@ -57,12 +57,15 @@ public class SkillGapService
         DefaultIgnoreCondition      = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public SkillGapService(IConfiguration config, ILogger<SkillGapService> logger)
+    public SkillGapService(
+        IConfiguration config,
+        ILogger<SkillGapService> logger,
+        DatabaseConnectionManager dbManager)
     {
-        _config     = config;
-        _logger     = logger;
-        _connString = config["DATABASE_URL"]!;
-        _http       = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        _config    = config;
+        _logger    = logger;
+        _dbManager = dbManager;
+        _http      = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         _http.DefaultRequestHeaders.Add("User-Agent", "InterviewBot/1.0");
     }
 
@@ -589,8 +592,7 @@ JOB DESCRIPTIONS:
     {
         try
         {
-            var ds = new Npgsql.NpgsqlDataSourceBuilder(_connString).Build();
-            await using var conn = await ds.OpenConnectionAsync();
+            await using var db = await _dbManager.OpenConnectionAsync();
 
             foreach (var job in jobs.Take(50)) // cap at 50 persisted
             {
@@ -608,7 +610,7 @@ JOB DESCRIPTIONS:
                         ON CONFLICT (external_id) DO UPDATE
                             SET ats_score   = EXCLUDED.ats_score,
                                 match_score = EXCLUDED.match_score,
-                                fetched_at  = NOW()", conn);
+                                fetched_at  = NOW()", db.Connection);
 
                     cmd.Parameters.AddWithValue("source",  job.Source);
                     cmd.Parameters.AddWithValue("extId",   job.ExternalId);
@@ -672,8 +674,7 @@ JOB DESCRIPTIONS:
     {
         try
         {
-            var ds = new Npgsql.NpgsqlDataSourceBuilder(_connString).Build();
-            await using var conn = await ds.OpenConnectionAsync();
+            await using var db   = await _dbManager.OpenConnectionAsync();
             await using var cmd  = new Npgsql.NpgsqlCommand(@"
                 INSERT INTO job_applications (job_id, status, notes)
                 VALUES (@jobId, @status, @notes)
@@ -681,7 +682,7 @@ JOB DESCRIPTIONS:
                     SET status = EXCLUDED.status,
                         notes  = EXCLUDED.notes,
                         applied_at = CASE WHEN EXCLUDED.status = 'applied'
-                                     THEN NOW() ELSE job_applications.applied_at END", conn);
+                                     THEN NOW() ELSE job_applications.applied_at END", db.Connection);
 
             cmd.Parameters.AddWithValue("jobId",  req.JobId);
             cmd.Parameters.AddWithValue("status", req.Status);
@@ -701,15 +702,14 @@ JOB DESCRIPTIONS:
         var results = new List<object>();
         try
         {
-            var ds = new Npgsql.NpgsqlDataSourceBuilder(_connString).Build();
-            await using var conn = await ds.OpenConnectionAsync();
+            await using var db   = await _dbManager.OpenConnectionAsync();
             await using var cmd  = new Npgsql.NpgsqlCommand(@"
                 SELECT jl.id, jl.title, jl.company, jl.location, jl.is_remote,
                        jl.job_url, jl.match_score, jl.ats_score,
                        ja.status, ja.applied_at, ja.notes
                 FROM job_applications ja
                 JOIN job_listings jl ON jl.id = ja.job_id
-                ORDER BY ja.created_at DESC", conn);
+                ORDER BY ja.created_at DESC", db.Connection);
 
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -742,13 +742,12 @@ JOB DESCRIPTIONS:
     // ================================================================
     public async Task UpsertSettingAsync(string key, string value)
     {
-        var ds = new Npgsql.NpgsqlDataSourceBuilder(_connString).Build();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new Npgsql.NpgsqlCommand(@"
             INSERT INTO user_settings (key, value, updated_at)
             VALUES (@key, @value, NOW())
             ON CONFLICT (key) DO UPDATE
-                SET value = EXCLUDED.value, updated_at = NOW()", conn);
+                SET value = EXCLUDED.value, updated_at = NOW()", db.Connection);
         cmd.Parameters.AddWithValue("key",   key);
         cmd.Parameters.AddWithValue("value", value);
         await cmd.ExecuteNonQueryAsync();
@@ -756,10 +755,9 @@ JOB DESCRIPTIONS:
 
     public async Task<string?> GetSettingAsync(string key)
     {
-        var ds = new Npgsql.NpgsqlDataSourceBuilder(_connString).Build();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new Npgsql.NpgsqlCommand(
-            "SELECT value FROM user_settings WHERE key = @key", conn);
+            "SELECT value FROM user_settings WHERE key = @key", db.Connection);
         cmd.Parameters.AddWithValue("key", key);
         return await cmd.ExecuteScalarAsync() as string;
     }

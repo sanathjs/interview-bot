@@ -1,6 +1,5 @@
 using Npgsql;
 using Pgvector;
-using Pgvector.Npgsql;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -10,7 +9,7 @@ namespace interview_bot_api.Services;
 
 public class IngestionService
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionManager _dbManager;
     private readonly HttpClient _groqClient;
     private readonly ILogger<IngestionService> _logger;
     private readonly EmbeddingService _embedding;
@@ -20,13 +19,14 @@ public class IngestionService
     public IngestionService(
         IConfiguration config,
         ILogger<IngestionService> logger,
-        EmbeddingService embedding)
+        EmbeddingService embedding,
+        DatabaseConnectionManager dbManager)
     {
-        _logger           = logger;
-        _connectionString = config["DATABASE_URL"]!;
-        _embedding        = embedding;
-        _groqApiKey       = config["Groq:ApiKey"]!;
-        _groqModel        = config["Groq:Model"] ?? "llama-3.3-70b-versatile";
+        _logger     = logger;
+        _dbManager  = dbManager;
+        _embedding  = embedding;
+        _groqApiKey = config["Groq:ApiKey"]!;
+        _groqModel  = config["Groq:Model"] ?? "llama-3.3-70b-versatile";
 
         _groqClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         _groqClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_groqApiKey}");
@@ -254,10 +254,7 @@ public class IngestionService
     // ================================================================
     private async Task SaveChunkAsync(KnowledgeChunk chunk, float[] bodyEmbedding)
     {
-        var dsb = new NpgsqlDataSourceBuilder(_connectionString);
-        dsb.UseVector();
-        await using var ds   = dsb.Build();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db = await _dbManager.OpenConnectionAsync();
 
         await using var cmd = new NpgsqlCommand(@"
             INSERT INTO knowledge_chunks
@@ -268,7 +265,7 @@ public class IngestionService
                 (@sourceFile, @sectionTitle, @chunkText, @chunkIndex,
                  @embedding, @topic, @tags,
                  @titleEmbedding, @questionsEmbedding, @questionsText, @titleWordCount)",
-            conn);
+            db.Connection);
 
         cmd.Parameters.AddWithValue("sourceFile",    chunk.SourceFile);
         cmd.Parameters.AddWithValue("sectionTitle",  chunk.SectionTitle ?? "");
@@ -303,12 +300,9 @@ public class IngestionService
     // ================================================================
     private async Task ClearExistingChunksAsync()
     {
-        var dsb = new NpgsqlDataSourceBuilder(_connectionString);
-        dsb.UseVector();
-        await using var ds   = dsb.Build();
-        await using var conn = await ds.OpenConnectionAsync();
-        await using var cmd  = new NpgsqlCommand(
-            "TRUNCATE knowledge_chunks RESTART IDENTITY CASCADE", conn);
+        await using var db  = await _dbManager.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "TRUNCATE knowledge_chunks RESTART IDENTITY CASCADE", db.Connection);
         await cmd.ExecuteNonQueryAsync();
         _logger.LogInformation("Cleared existing chunks");
     }

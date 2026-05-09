@@ -1,6 +1,5 @@
 using Npgsql;
 using Pgvector;
-using Pgvector.Npgsql;
 using System.Net.Http.Json;
 using System.Text.Json;
 using interview_bot_api.Models;
@@ -12,7 +11,7 @@ public class ChatService
     private readonly IConfiguration _config;
     private readonly string _llmProvider;
     private readonly KnowledgeSearchService _search;
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionManager _dbManager;
     private readonly HttpClient _httpClient;
     private readonly ILogger<ChatService> _logger;
     private readonly EmbeddingService _embedding;
@@ -21,11 +20,12 @@ public class ChatService
         KnowledgeSearchService search,
         IConfiguration config,
         ILogger<ChatService> logger,
-        EmbeddingService embedding)
+        EmbeddingService embedding,
+        DatabaseConnectionManager dbManager)
     {
         _search = search;
         _logger = logger;
-        _connectionString = config["DATABASE_URL"]!;
+        _dbManager = dbManager;
         _embedding = embedding;
         _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(180) };
         _config = config;
@@ -719,21 +719,13 @@ ANSWER:";
     // ================================================================
     // DB HELPERS
     // ================================================================
-    private NpgsqlDataSource BuildDataSource()
-    {
-        var builder = new NpgsqlDataSourceBuilder(_connectionString);
-        builder.UseVector();
-        return builder.Build();
-    }
-
     private async Task EnsureSessionExistsAsync(string sessionId)
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new NpgsqlCommand(@"
             INSERT INTO interview_sessions (session_code, status)
             VALUES (@code, 'active')
-            ON CONFLICT (session_code) DO NOTHING", conn);
+            ON CONFLICT (session_code) DO NOTHING", db.Connection);
 
         cmd.Parameters.AddWithValue("code", sessionId);
         await cmd.ExecuteNonQueryAsync();
@@ -743,15 +735,14 @@ ANSWER:";
         string sessionId, string role, string messageText,
         double? confidence, string? answerSource, string? fallbackProvider)
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
 
         await using var seqCmd = new NpgsqlCommand(@"
             SELECT COALESCE(MAX(sequence_number), 0) + 1
             FROM chat_messages
             WHERE session_id = (
                 SELECT id FROM interview_sessions WHERE session_code = @code
-            )", conn);
+            )", db.Connection);
         seqCmd.Parameters.AddWithValue("code", sessionId);
         var seqNum = (int)(await seqCmd.ExecuteScalarAsync() ?? 1);
 
@@ -763,7 +754,7 @@ ANSWER:";
                 (SELECT id FROM interview_sessions WHERE session_code = @code),
                 @seqNum, @role, @message, @confidence, @answerSource, @fallbackProvider
             )
-            RETURNING id", conn);
+            RETURNING id", db.Connection);
 
         cmd.Parameters.AddWithValue("code",             sessionId);
         cmd.Parameters.AddWithValue("seqNum",           seqNum);
@@ -779,15 +770,14 @@ ANSWER:";
     private async Task SaveUnansweredQuestionAsync(
         string sessionId, int messageId, string questionText)
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new NpgsqlCommand(@"
             INSERT INTO unanswered_questions
                 (session_id, message_id, question_text, status, priority)
             VALUES (
                 (SELECT id FROM interview_sessions WHERE session_code = @code),
                 @messageId, @questionText, 'new', 'medium'
-            )", conn);
+            )", db.Connection);
 
         cmd.Parameters.AddWithValue("code",         sessionId);
         cmd.Parameters.AddWithValue("messageId",    messageId);
@@ -803,15 +793,14 @@ ANSWER:";
     {
         try
         {
-            await using var ds   = BuildDataSource();
-            await using var conn = await ds.OpenConnectionAsync();
+            await using var db   = await _dbManager.OpenConnectionAsync();
             await using var cmd  = new NpgsqlCommand(@"
                 SELECT uq.question_text
                 FROM unanswered_questions uq
                 JOIN interview_sessions s ON s.id = uq.session_id
                 WHERE s.session_code = @code
                 ORDER BY uq.first_asked_at DESC
-                LIMIT 1", conn);
+                LIMIT 1", db.Connection);
             cmd.Parameters.AddWithValue("code", sessionCode);
             var result = await cmd.ExecuteScalarAsync();
             return result as string;
@@ -824,13 +813,12 @@ ANSWER:";
         var results = new List<SearchResult>();
         try
         {
-            await using var ds   = BuildDataSource();
-            await using var conn = await ds.OpenConnectionAsync();
+            await using var db   = await _dbManager.OpenConnectionAsync();
             await using var cmd  = new NpgsqlCommand(@"
                 SELECT id, source_file, section_title, chunk_text, 0.9 AS similarity
                 FROM knowledge_chunks
                 WHERE source_file = @sourceFile
-                ORDER BY chunk_index", conn);
+                ORDER BY chunk_index", db.Connection);
 
             cmd.Parameters.AddWithValue("sourceFile", sourceFile);
 
@@ -859,8 +847,7 @@ ANSWER:";
     // ================================================================
     public async Task<object> GetSessionsAsync()
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new NpgsqlCommand(@"
             SELECT
                 s.id, s.session_code, s.company_name, s.interviewer_name,
@@ -879,7 +866,7 @@ ANSWER:";
                      WHERE m.session_id = s.id AND m.confidence_score IS NOT NULL))
             FROM interview_sessions s
             LEFT JOIN session_analytics a ON a.session_id = s.id
-            ORDER BY s.started_at DESC", conn);
+            ORDER BY s.started_at DESC", db.Connection);
 
         var sessions = new List<object>();
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -907,8 +894,7 @@ ANSWER:";
 
     public async Task<object?> GetTranscriptByIdAsync(int sessionId)
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
 
         await using var sessionCmd = new NpgsqlCommand(@"
             SELECT
@@ -929,7 +915,7 @@ ANSWER:";
                      WHERE m.session_id = s.id AND m.confidence_score IS NOT NULL))
             FROM interview_sessions s
             LEFT JOIN session_analytics a ON a.session_id = s.id
-            WHERE s.id = @id", conn);
+            WHERE s.id = @id", db.Connection);
 
         sessionCmd.Parameters.AddWithValue("id", sessionId);
 
@@ -961,7 +947,7 @@ ANSWER:";
                    m.fallback_provider, m.response_time_ms, m.created_at
             FROM chat_messages m
             WHERE m.session_id = @id
-            ORDER BY m.sequence_number", conn);
+            ORDER BY m.sequence_number", db.Connection);
 
         msgCmd.Parameters.AddWithValue("id", sessionId);
 
@@ -995,8 +981,7 @@ ANSWER:";
 
     public async Task<object> GetUnansweredAsync()
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new NpgsqlCommand(@"
             SELECT uq.id, uq.question_text, uq.question_category,
                    uq.times_asked, uq.priority, uq.status,
@@ -1006,7 +991,7 @@ ANSWER:";
             WHERE uq.status != 'added_to_kb'
             ORDER BY
                 CASE uq.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
-                uq.times_asked DESC", conn);
+                uq.times_asked DESC", db.Connection);
 
         var questions = new List<object>();
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -1032,12 +1017,11 @@ ANSWER:";
     {
         try
         {
-            await using var ds   = BuildDataSource();
-            await using var conn = await ds.OpenConnectionAsync();
+            await using var db   = await _dbManager.OpenConnectionAsync();
             await using var cmd  = new NpgsqlCommand(@"
                 UPDATE unanswered_questions
                 SET sanath_answer = @answer, status = 'ready', sanath_answered_at = NOW()
-                WHERE id = @id", conn);
+                WHERE id = @id", db.Connection);
 
             cmd.Parameters.AddWithValue("id",     id);
             cmd.Parameters.AddWithValue("answer", answer);
@@ -1054,13 +1038,12 @@ ANSWER:";
     {
         try
         {
-            await using var ds   = BuildDataSource();
-            await using var conn = await ds.OpenConnectionAsync();
+            await using var db   = await _dbManager.OpenConnectionAsync();
 
             await using var getCmd = new NpgsqlCommand(@"
                 SELECT question_text, sanath_answer
                 FROM unanswered_questions
-                WHERE id = @id AND sanath_answer IS NOT NULL", conn);
+                WHERE id = @id AND sanath_answer IS NOT NULL", db.Connection);
             getCmd.Parameters.AddWithValue("id", id);
 
             await using var reader = await getCmd.ExecuteReaderAsync();
@@ -1083,7 +1066,7 @@ ANSWER:";
                 INSERT INTO knowledge_chunks
                     (source_file, section_title, chunk_text, chunk_index, embedding)
                 VALUES ('prep-answers.md', @section, @chunkText, 0, @embedding)
-                RETURNING id", conn);
+                RETURNING id", db.Connection);
 
             insertCmd.Parameters.AddWithValue("section",   questionText);
             insertCmd.Parameters.AddWithValue("chunkText", chunkText);
@@ -1094,7 +1077,7 @@ ANSWER:";
             await using var updateCmd = new NpgsqlCommand(@"
                 UPDATE unanswered_questions
                 SET status = 'added_to_kb', kb_chunk_id = @chunkId
-                WHERE id = @id", conn);
+                WHERE id = @id", db.Connection);
 
             updateCmd.Parameters.AddWithValue("chunkId", newChunkId);
             updateCmd.Parameters.AddWithValue("id",      id);
@@ -1114,10 +1097,9 @@ ANSWER:";
     {
         try
         {
-            await using var ds   = BuildDataSource();
-            await using var conn = await ds.OpenConnectionAsync();
+            await using var db   = await _dbManager.OpenConnectionAsync();
             await using var cmd  = new NpgsqlCommand(
-                "DELETE FROM unanswered_questions WHERE id = @id", conn);
+                "DELETE FROM unanswered_questions WHERE id = @id", db.Connection);
 
             cmd.Parameters.AddWithValue("id", id);
             return await cmd.ExecuteNonQueryAsync() > 0;
@@ -1132,13 +1114,12 @@ ANSWER:";
     public async Task UpdateSessionDetailsAsync(
         string sessionCode, UpdateSessionDetailsRequest request)
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new NpgsqlCommand(@"
             UPDATE interview_sessions
             SET interviewer_name = COALESCE(@interviewerName, interviewer_name),
                 company_name     = COALESCE(@companyName, company_name)
-            WHERE session_code = @code", conn);
+            WHERE session_code = @code", db.Connection);
 
         cmd.Parameters.AddWithValue("code",            sessionCode);
         cmd.Parameters.AddWithValue("interviewerName", request.InterviewerName ?? (object)DBNull.Value);
@@ -1149,15 +1130,14 @@ ANSWER:";
     public async Task SaveMessageFeedbackAsync(
         string sessionCode, int sequenceNumber, bool helpful)
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new NpgsqlCommand(@"
             UPDATE chat_messages
             SET was_helpful = @helpful
             WHERE session_id = (
                 SELECT id FROM interview_sessions WHERE session_code = @code
             )
-            AND sequence_number = @seq", conn);
+            AND sequence_number = @seq", db.Connection);
 
         cmd.Parameters.AddWithValue("helpful", helpful);
         cmd.Parameters.AddWithValue("code",    sessionCode);
@@ -1167,14 +1147,13 @@ ANSWER:";
 
     public async Task EndSessionAsync(string sessionCode)
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new NpgsqlCommand(@"
             UPDATE interview_sessions
             SET    status   = 'completed',
                    ended_at = CASE WHEN ended_at IS NULL THEN NOW() ELSE ended_at END
             WHERE  session_code = @code
-            AND    status = 'active'", conn);
+            AND    status = 'active'", db.Connection);
 
         cmd.Parameters.AddWithValue("code", sessionCode);
         await cmd.ExecuteNonQueryAsync();
@@ -1182,14 +1161,13 @@ ANSWER:";
 
     public async Task AutoExpireStaleSessionsAsync()
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new NpgsqlCommand(@"
             UPDATE interview_sessions
             SET    status   = 'completed',
                    ended_at = started_at + INTERVAL '2 hours'
             WHERE  status     = 'active'
-            AND    started_at < NOW() - INTERVAL '2 hours'", conn);
+            AND    started_at < NOW() - INTERVAL '2 hours'", db.Connection);
 
         await cmd.ExecuteNonQueryAsync();
     }
@@ -1197,15 +1175,14 @@ ANSWER:";
     // Legacy — kept for any existing callers
     public async Task<object> GetTranscriptAsync(string sessionId)
     {
-        await using var ds   = BuildDataSource();
-        await using var conn = await ds.OpenConnectionAsync();
+        await using var db   = await _dbManager.OpenConnectionAsync();
         await using var cmd  = new NpgsqlCommand(@"
             SELECT m.sequence_number, m.role, m.message_text,
                    m.answer_source, m.confidence_score, m.created_at
             FROM chat_messages m
             JOIN interview_sessions s ON s.id = m.session_id
             WHERE s.session_code = @code
-            ORDER BY m.sequence_number", conn);
+            ORDER BY m.sequence_number", db.Connection);
 
         cmd.Parameters.AddWithValue("code", sessionId);
 

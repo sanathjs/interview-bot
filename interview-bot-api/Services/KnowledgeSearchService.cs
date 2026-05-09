@@ -1,13 +1,12 @@
 using Npgsql;
 using Pgvector;
-using Pgvector.Npgsql;
 using interview_bot_api.Models;
 
 namespace interview_bot_api.Services;
 
 public class KnowledgeSearchService
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionManager _dbManager;
     private readonly ILogger<KnowledgeSearchService> _logger;
     private readonly EmbeddingService _embedding;
 
@@ -29,11 +28,12 @@ public class KnowledgeSearchService
     public KnowledgeSearchService(
         IConfiguration config,
         ILogger<KnowledgeSearchService> logger,
-        EmbeddingService embedding)
+        EmbeddingService embedding,
+        DatabaseConnectionManager dbManager)
     {
-        _logger           = logger;
-        _connectionString = config["DATABASE_URL"]!;
-        _embedding        = embedding;
+        _logger    = logger;
+        _dbManager = dbManager;
+        _embedding = embedding;
     }
 
     // ================================================================
@@ -204,10 +204,7 @@ public class KnowledgeSearchService
         var results = new Dictionary<int, SearchResult>();
         try
         {
-            var dsb = new NpgsqlDataSourceBuilder(_connectionString);
-            dsb.UseVector();
-            await using var ds   = dsb.Build();
-            await using var conn = await ds.OpenConnectionAsync();
+            await using var db = await _dbManager.OpenConnectionAsync();
 
             // Cast query vector explicitly; skip rows where column is NULL
             var sql = $@"
@@ -224,7 +221,7 @@ public class KnowledgeSearchService
                 ORDER BY {columnName} <=> @queryVec::vector
                 LIMIT @topK";
 
-            await using var cmd = new NpgsqlCommand(sql, conn);
+            await using var cmd = new NpgsqlCommand(sql, db.Connection);
             cmd.Parameters.AddWithValue("queryVec", new Vector(queryVector));
             cmd.Parameters.AddWithValue("topK",     topK);
 
@@ -259,13 +256,10 @@ public class KnowledgeSearchService
         var ids = new HashSet<int>();
         try
         {
-            var dsb = new NpgsqlDataSourceBuilder(_connectionString);
-            dsb.UseVector();
-            await using var ds   = dsb.Build();
-            await using var conn = await ds.OpenConnectionAsync();
+            await using var db = await _dbManager.OpenConnectionAsync();
 
             await using var cmd = new NpgsqlCommand(
-                "SELECT id FROM knowledge_chunks WHERE tags && @keywords", conn);
+                "SELECT id FROM knowledge_chunks WHERE tags && @keywords", db.Connection);
             cmd.Parameters.AddWithValue("keywords", keywords.ToArray());
 
             await using var reader = await cmd.ExecuteReaderAsync();
