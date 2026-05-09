@@ -944,7 +944,8 @@ ANSWER:";
         await using var msgCmd = new NpgsqlCommand(@"
             SELECT m.id, m.sequence_number, m.role, m.message_text,
                    m.answer_source, m.confidence_score,
-                   m.fallback_provider, m.response_time_ms, m.created_at
+                   m.fallback_provider, m.response_time_ms, m.created_at,
+                   m.was_helpful
             FROM chat_messages m
             WHERE m.session_id = @id
             ORDER BY m.sequence_number", db.Connection);
@@ -966,6 +967,7 @@ ANSWER:";
                 fallbackProvider = mr.IsDBNull(6) ? null          : mr.GetString(6),
                 responseTimeMs   = mr.IsDBNull(7) ? (int?)null    : mr.GetInt32(7),
                 createdAt        = mr.GetDateTime(8),
+                wasHelpful       = mr.IsDBNull(9) ? (bool?)null   : mr.GetBoolean(9),
             });
         }
 

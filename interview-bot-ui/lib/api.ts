@@ -122,3 +122,21 @@ export async function updateSkillGapSettings(settings: Record<string, string>) {
   if (!res.ok) throw new Error("updateSettings failed");
   return res.json();
 }
+
+// ── Knowledge Prepare ─────────────────────────────────────────────
+
+export async function getKnowledgeFiles() {
+  const res = await fetch(`${API_URL}/api/knowledge/files`);
+  if (!res.ok) throw new Error("Failed to fetch knowledge files");
+  return res.json() as Promise<{ files: { sourceFile: string; displayName: string; chunkCount: number }[] }>;
+}
+
+export async function getKnowledgeChunks(sourceFile: string) {
+  const res = await fetch(`${API_URL}/api/knowledge/files/${encodeURIComponent(sourceFile)}`);
+  if (!res.ok) throw new Error("Failed to fetch file content");
+  return res.json() as Promise<{
+    sourceFile: string;
+    displayName: string;
+    chunks: { sectionTitle: string; body: string; questions: string[] | null }[];
+  }>;
+}
