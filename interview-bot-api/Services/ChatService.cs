@@ -59,7 +59,8 @@ public class ChatService
                     "What are your recent projects?",
                 }
             };
-            await SaveMessageAsync(request.SessionId, "bot", injectionResponse.Answer, null, "injection_blocked", null);
+            var (_, injSeq) = await SaveMessageAsync(request.SessionId, "bot", injectionResponse.Answer, null, "injection_blocked", null);
+            injectionResponse.BotSequenceNumber = injSeq;
             return injectionResponse;
         }
 
@@ -74,20 +75,21 @@ public class ChatService
             if (lastQuestion != null)
             {
                 var llmOnlyResponse = await HandleLlmGeneralAsync(request, lastQuestion);
-                await SaveMessageAsync(
+                var (_, llmSeq) = await SaveMessageAsync(
                     request.SessionId, "bot", llmOnlyResponse.Answer, null,
                     llmOnlyResponse.AnswerSource, "groq");
+                llmOnlyResponse.BotSequenceNumber = llmSeq;
                 return llmOnlyResponse;
             }
         }
 
-        var questionMsgId = await SaveMessageAsync(
+        var (questionMsgId, _) = await SaveMessageAsync(
             request.SessionId, "interviewer", request.Message, null, null, null);
 
         if (IsGreeting(request.Message))
         {
             var greetingResponse = GetGreetingResponse(request.Message);
-            await SaveMessageAsync(request.SessionId, "bot", greetingResponse, null, "greeting", null);
+            var (_, greetSeq) = await SaveMessageAsync(request.SessionId, "bot", greetingResponse, null, "greeting", null);
             return new ChatResponse
             {
                 Answer = greetingResponse,
@@ -95,6 +97,7 @@ public class ChatService
                 ConfidenceScore = 1.0,
                 UsedFallback = false,
                 SessionId = request.SessionId,
+                BotSequenceNumber = greetSeq,
                 Sources = new List<SourceChunk>()
             };
         }
@@ -121,10 +124,11 @@ public class ChatService
             response = await HandleKnowledgeBaseAnswerAsync(request, results, topScore, confidenceLevel);
         }
 
-        await SaveMessageAsync(
+        var (_, botSeqNum) = await SaveMessageAsync(
             request.SessionId, "bot", response.Answer, topScore,
             response.AnswerSource, response.UsedFallback ? "groq" : null);
 
+        response.BotSequenceNumber = botSeqNum;
         return response;
     }
 
@@ -731,7 +735,7 @@ ANSWER:";
         await cmd.ExecuteNonQueryAsync();
     }
 
-    private async Task<int> SaveMessageAsync(
+    private async Task<(int Id, int SeqNum)> SaveMessageAsync(
         string sessionId, string role, string messageText,
         double? confidence, string? answerSource, string? fallbackProvider)
     {
@@ -764,7 +768,8 @@ ANSWER:";
         cmd.Parameters.AddWithValue("answerSource",     answerSource     ?? (object)DBNull.Value);
         cmd.Parameters.AddWithValue("fallbackProvider", fallbackProvider ?? (object)DBNull.Value);
 
-        return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+        var id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+        return (id, seqNum);
     }
 
     private async Task SaveUnansweredQuestionAsync(
@@ -1117,11 +1122,13 @@ ANSWER:";
         string sessionCode, UpdateSessionDetailsRequest request)
     {
         await using var db   = await _dbManager.OpenConnectionAsync();
+        // UPSERT: create session row if it doesn't exist yet (PATCH arrives before first chat message)
         await using var cmd  = new NpgsqlCommand(@"
-            UPDATE interview_sessions
-            SET interviewer_name = COALESCE(@interviewerName, interviewer_name),
-                company_name     = COALESCE(@companyName, company_name)
-            WHERE session_code = @code", db.Connection);
+            INSERT INTO interview_sessions (session_code, status, interviewer_name, company_name)
+            VALUES (@code, 'active', @interviewerName, @companyName)
+            ON CONFLICT (session_code)
+            DO UPDATE SET interviewer_name = COALESCE(@interviewerName, interview_sessions.interviewer_name),
+                          company_name     = COALESCE(@companyName, interview_sessions.company_name)", db.Connection);
 
         cmd.Parameters.AddWithValue("code",            sessionCode);
         cmd.Parameters.AddWithValue("interviewerName", request.InterviewerName ?? (object)DBNull.Value);

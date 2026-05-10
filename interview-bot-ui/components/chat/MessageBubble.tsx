@@ -205,7 +205,7 @@ interface Props {
   showFollowUps: boolean;
   showSourceDetails: boolean;
   usedFollowUps?: Set<string>;
-  onFeedback?: (id: string, helpful: boolean) => void;
+  onFeedback?: (sequenceNumber: number, helpful: boolean) => void;
   onFollowUp?: (q: string) => void;
 }
 
@@ -327,7 +327,7 @@ export default function MessageBubble({
 
               {!isUnanswered && !isGreeting && (
                 <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
-                  <button onClick={() => { setFeedback("up"); onFeedback?.(message.id, true); }}
+                  <button onClick={() => { setFeedback("up"); if (message.sequenceNumber) onFeedback?.(message.sequenceNumber, true); }}
                     style={{
                       width: 24, height: 24, borderRadius: "50%", border: "none", background: "none",
                       cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
@@ -339,7 +339,7 @@ export default function MessageBubble({
                       <path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/>
                     </svg>
                   </button>
-                  <button onClick={() => { setFeedback("down"); onFeedback?.(message.id, false); }}
+                  <button onClick={() => { setFeedback("down"); if (message.sequenceNumber) onFeedback?.(message.sequenceNumber, false); }}
                     style={{
                       width: 24, height: 24, borderRadius: "50%", border: "none", background: "none",
                       cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",

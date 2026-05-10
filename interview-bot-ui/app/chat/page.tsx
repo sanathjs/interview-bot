@@ -267,6 +267,7 @@ export default function ChatPage() {
 
       setMessages(prev => [...prev, {
         id: botMsgId, role: "bot", text: "",
+        sequenceNumber: response.botSequenceNumber,
         answerSource: response.answerSource as Message["answerSource"],
         confidenceScore: response.confidenceScore,
         sources: response.sources,
@@ -295,9 +296,9 @@ export default function ChatPage() {
     }
   };
 
-  const handleFeedback = async (messageId: string, helpful: boolean) => {
+  const handleFeedback = async (sequenceNumber: number, helpful: boolean) => {
     try {
-      await fetch(`${API_URL}/api/messages/${messageId}/feedback`, {
+      await fetch(`${API_URL}/api/messages/${sequenceNumber}/feedback`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ helpful, sessionCode: sessionId }),

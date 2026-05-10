@@ -1,5 +1,6 @@
 export interface Message {
   id: string;
+  sequenceNumber?: number;      // DB sequence_number — used for feedback PATCH
   role: "interviewer" | "bot";
   text: string;
   answerSource?: "knowledge_base" | "unanswered" | "fallback_ai" | "greeting" | "architecture" | "not_found" | "llm_general";
@@ -37,4 +38,5 @@ export interface ChatResponse {
   followUps?: string[];
   usedFallback: boolean;
   sessionId: string;
+  botSequenceNumber: number;
 }

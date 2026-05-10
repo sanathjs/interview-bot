@@ -18,6 +18,7 @@ public class ChatResponse
     public List<string> FollowUps { get; set; } = new(); 
     public bool UsedFallback { get; set; } = false;
     public string SessionId { get; set; } = string.Empty;
+    public int BotSequenceNumber { get; set; }
 }
 
 public class SourceChunk

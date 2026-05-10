@@ -13,10 +13,13 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
 - 🔊 **Voice playback** — Answers read aloud via browser TTS (Web Speech API)
 - 📝 **Unanswered question tracking** — Questions outside KB stored for prep
 - 📚 **Prep dashboard** — Review, answer, and promote unanswered questions to KB
-- 📋 **Session history** — Browse past interviews with full transcripts
+- 📖 **Prepare for interview** — Read all KB Q&A in a clean study mode with AI-generated interview angles per section
+- 📋 **Session history** — Browse past interviews with full transcripts and per-message feedback
 - 📊 **Confidence scoring** — Every answer shows confidence % from weighted vector similarity
 - 🔒 **Security** — Prompt injection detection, system prompt protection, persona guard
 - 🎯 **Skill Gap Analyzer** — Live job search from Adzuna + Remotive, skill matching, salary insights, company rankings, auto-digest toggle
+- 🎨 **5 chat themes** — Obsidian (default), Monolith, Counsel, Signal (light mode), Slate Editorial — selectable from homepage
+- 🛡️ **Fallback database** — Automatic failover from Supabase to Neon when primary DB is unreachable
 - 📱 **Mobile responsive** — Works on all screen sizes
 
 ---
@@ -34,14 +37,23 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
           ┌─────────▼──────┐         ┌──────────▼─────┐     ┌────────▼──────┐
           │  PostgreSQL 16  │         │   Groq Cloud   │     │  HuggingFace  │
           │  + pgvector    │         │  LLM + STT     │     │  Embeddings   │
-          │  (Supabase)    │         │  (Free tier)   │     │  (Free tier)  │
-          └────────────────┘         └────────────────┘     └───────────────┘
-                    │
-          ┌─────────▼──────┐         ┌────────────────┐
-          │  Adzuna API    │         │  Remotive API  │
-          │  (Job search)  │         │  (Remote jobs) │
-          └────────────────┘         └────────────────┘
+          │  Primary:      │         │  (Free tier)   │     │  (Free tier)  │
+          │    Supabase    │         └────────────────┘     └───────────────┘
+          │  Fallback:     │
+          │    Neon         │         ┌────────────────┐     ┌────────────────┐
+          └────────────────┘         │  Adzuna API    │     │  Remotive API  │
+                                     │  (Job search)  │     │  (Remote jobs) │
+                                     └────────────────┘     └────────────────┘
 ```
+
+### Database Failover
+
+The `DatabaseConnectionManager` singleton manages automatic failover:
+- **Primary:** Supabase (may pause after 7 days of inactivity on free tier)
+- **Fallback:** Neon (serverless, never pauses)
+- On primary failure, switches to fallback for 5 minutes, then retries primary
+- `/ping` runs `SELECT 1` to keep both Render and the DB alive
+- `/health` returns which DB is active: `{"status":"healthy","db":"primary (Supabase)"}`
 
 ---
 
@@ -51,24 +63,29 @@ An AI-powered interview assistant that represents **Sanath Kumar J S** in techni
 interview-bot/
 ├── interview-bot-ui/                  # Next.js 14 frontend
 │   ├── app/
-│   │   ├── page.tsx                   # Home page
-│   │   ├── chat/page.tsx              # Chat interface
+│   │   ├── page.tsx                   # Home page + theme picker
+│   │   ├── chat/page.tsx              # Chat interface (theme-aware)
 │   │   ├── prep/page.tsx              # Prep dashboard (PIN protected)
+│   │   ├── prepare/page.tsx           # KB reading mode for interview prep
 │   │   ├── skill-gap/page.tsx         # Skill Gap Analyzer
 │   │   └── sessions/
 │   │       ├── page.tsx               # Session list
-│   │       └── [id]/page.tsx          # Transcript view
+│   │       └── [id]/page.tsx          # Transcript view with feedback
 │   ├── components/
-│   │   ├── Navbar.tsx
+│   │   ├── Navbar.tsx                 # Admin nav bar (theme-aware)
+│   │   ├── ThemeProvider.tsx          # React context for chat themes
 │   │   └── chat/
-│   │       ├── InputBar.tsx
-│   │       ├── MessageBubble.tsx
-│   │       └── TypingIndicator.tsx
-│   └── lib/api.ts                     # All fetch wrappers
+│   │       ├── InputBar.tsx           # (theme-aware)
+│   │       ├── MessageBubble.tsx      # (theme-aware)
+│   │       └── TypingIndicator.tsx    # (theme-aware)
+│   └── lib/
+│       ├── api.ts                     # All fetch wrappers
+│       └── themes.ts                  # 5 chat theme definitions
 │
 ├── interview-bot-api/                 # .NET 8 Web API
 │   ├── Controllers/
 │   │   ├── ChatController.cs
+│   │   ├── KnowledgeController.cs     # KB file list + chunk reader
 │   │   ├── TranscribeController.cs
 │   │   ├── IngestionController.cs
 │   │   └── SkillGapController.cs
@@ -77,6 +94,7 @@ interview-bot/
 │   │   ├── KnowledgeSearchService.cs
 │   │   ├── IngestionService.cs
 │   │   ├── EmbeddingService.cs
+│   │   ├── DatabaseConnectionManager.cs  # Primary/fallback DB failover
 │   │   ├── ChunkMetadataHelper.cs
 │   │   └── SkillGapService.cs
 │   ├── Models/
@@ -333,6 +351,7 @@ curl -X POST http://localhost:5267/api/ingest -H "X-Admin-Key: your-key"
 ```json
 {
   "DATABASE_URL": "Host=localhost;...",
+  "FALLBACK_DATABASE_URL": "Host=ep-xxx.neon.tech;Port=5432;Database=neondb;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true",
   "ADMIN_INGEST_KEY": "your-secret-key",
   "LlmProvider": "groq",
   "HuggingFace": { "ApiKey": "hf_..." },
@@ -358,8 +377,9 @@ NEXT_PUBLIC_PREP_PIN=1234
 ### Render Environment Variables
 
 ```
-DATABASE_URL         = (Supabase pooler connection string)
-ADMIN_INGEST_KEY     = your-secret-key
+DATABASE_URL             = (Supabase pooler connection string)
+FALLBACK_DATABASE_URL    = (Neon connection string — optional but recommended)
+ADMIN_INGEST_KEY         = your-secret-key
 LlmProvider          = groq
 Groq__ApiKey         = gsk_...
 Groq__Model          = llama-3.3-70b-versatile
@@ -399,16 +419,27 @@ NEXT_PUBLIC_PREP_PIN = your-pin
 
 | Method | Path | Description | Auth |
 |---|---|---|---|
-| POST | `/api/chat` | RAG chat — answer + confidence + sources | None |
+| POST | `/api/chat` | RAG chat — answer + confidence + sources + botSequenceNumber | None |
 | GET | `/api/sessions` | List sessions with stats | None |
-| GET | `/api/sessions/{id}/detail` | Full transcript | None |
+| GET | `/api/sessions/{id}/detail` | Full transcript with per-message feedback (was_helpful) | None |
+| PATCH | `/api/sessions/{code}/details` | Update interviewer name + company (UPSERT) | None |
+| POST | `/api/sessions/{code}/end` | End session | None |
+| PATCH | `/api/messages/{seqNum}/feedback` | Save thumbs up/down (by DB sequence_number) | None |
 | GET | `/api/unanswered` | Prep dashboard questions | None |
 | PATCH | `/api/unanswered/{id}/answer` | Save answer | None |
 | POST | `/api/unanswered/{id}/promote` | Add answer to KB | None |
 | DELETE | `/api/unanswered/{id}` | Delete question | None |
 | POST | `/api/transcribe` | Audio → Groq Whisper → text | None |
 | POST | `/api/ingest` | Re-ingest all KB files | X-Admin-Key header |
-| GET | `/ping` | Health check / keep-alive for Render | None |
+| GET | `/ping` | Keep-alive — runs SELECT 1 to prevent Supabase pause | None |
+| GET | `/health` | Diagnostic — shows active DB (primary/fallback) | None |
+
+### Knowledge Base (Prepare)
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/api/knowledge/files` | List all KB files with display names + chunk counts | None |
+| GET | `/api/knowledge/files/{file}` | All sections from a file — title, body, question variants | None |
 
 ### Skill Gap
 
@@ -430,14 +461,15 @@ NEXT_PUBLIC_PREP_PIN = your-pin
 |---|---|---|---|
 | Frontend | Vercel | Free forever | Auto-deploys on git push |
 | Backend | Render.com | Free forever | Spins down after 15 min idle |
-| Database | Supabase | Free forever | 500MB limit |
+| Database (primary) | Supabase | Free forever | 500MB limit, pauses after 7 days idle |
+| Database (fallback) | Neon | Free forever | Serverless, never pauses, auto-failover |
 | Embeddings | HuggingFace | Free forever | |
 | LLM + STT | Groq | Free forever | |
 | Job Search | Adzuna + Remotive | Free forever | 1000 calls/day |
-| Keep-alive | cron-job.org | Free forever | Pings `/ping` every 10 min |
+| Keep-alive | cron-job.org | Free forever | Pings `/health` every 10 min |
 | **Total** | | **$0/month** | |
 
-> **Cold start:** Render free tier spins down after 15 min idle. First request takes ~30s. Set up a [cron-job.org](https://cron-job.org) ping to `https://your-app.onrender.com/ping` every 10 minutes to prevent this completely.
+> **Cold start:** Render free tier spins down after 15 min idle. First request takes ~30s. Set up a [cron-job.org](https://cron-job.org) ping to `https://your-app.onrender.com/health` every 10 minutes to prevent this completely. The `/health` endpoint runs `SELECT 1` which also keeps Supabase from pausing.
 
 ### Production Stack (future)
 
@@ -474,19 +506,63 @@ curl -X POST https://your-app.onrender.com/api/ingest \
 
 ## 🛠️ Development Notes
 
+### Database & Infrastructure
+- **DatabaseConnectionManager** (singleton) wraps all DB access with automatic primary→fallback switching and 5-min retry cooldown
+- `FALLBACK_DATABASE_URL` is optional — if not set, app works with primary only (no failover)
+- `/ping` runs `SELECT 1` via `DatabaseConnectionManager.ProbeAsync()` — keeps both Render and Supabase alive
+- `/health` returns JSON with `status` + `db` (which database is active)
+- `UpdateSessionDetailsAsync` uses UPSERT — creates session row if PATCH arrives before first chat message
 - `session_analytics` has no auto-trigger — stats fall back to live subqueries from `chat_messages`
+
+### Chat & Feedback
+- `ChatResponse` includes `botSequenceNumber` — the DB sequence_number of the bot's reply
+- Frontend passes `sequenceNumber` (not React `msg-N` IDs) to `PATCH /api/messages/{seqNum}/feedback`
+- `GetTranscriptByIdAsync` returns `was_helpful` per message — shows feedback in session transcript
+- Prompt injection blocked pre-LLM via `IsPromptInjection()` — 24 phrases detected
+
+### Themes
+- 5 chat themes defined in `lib/themes.ts`: Obsidian, Monolith, Counsel, Signal (light), Slate Editorial
+- `ThemeProvider` (React context) wraps the app; theme saved in `localStorage` as `ib_theme`
+- All chat components use `useTheme()` hook — `const C = useTheme()` replaces hardcoded color objects
+- Theme picker accessible from the palette icon (top-right of homepage)
+
+### Knowledge Base
 - `answering-guidelines.md` excluded from search at ingest time — do not rename it
-- Voice input: `MediaRecorder` → Groq Whisper → auto-sends transcribed text
-- Voice playback: `window.speechSynthesis` (browser TTS, no API needed)
-- Prep dashboard is PIN-protected via `NEXT_PUBLIC_PREP_PIN` env variable
-- Admin gear icon visible only when `localStorage.ib_role === "admin"`
 - Re-ingest required after any KB change — ~5 min for 101 chunks
 - KB headings should be written as the **exact question an interviewer would ask**
-- Prompt injection blocked pre-LLM via `IsPromptInjection()` — 24 phrases detected
+- `/api/knowledge/files` returns all files with display names (e.g., `dotnet-interview-qa.md` → "DotNet Interview Q&A")
+- `/api/knowledge/files/{file}` strips the "Topic: X\nSection: Y\n\n" prefix from chunk_text for clean reading
+
+### Voice & Input
+- Voice input: `MediaRecorder` → Groq Whisper → auto-sends transcribed text
+- Voice playback: `window.speechSynthesis` (browser TTS, no API needed)
+
+### Admin & Auth
+- Prep dashboard is PIN-protected via `NEXT_PUBLIC_PREP_PIN` env variable
+- Admin gear icon visible only when `localStorage.ib_role === "admin"`
+- Prepare tab visible in admin nav and admin dashboard homepage
+
+### Deployment
 - Adzuna fetches IN → GB → US; falls back to international if India returns fewer than 10 jobs
 - `job_listings.external_id` is unique — re-running analysis updates scores, no duplicates
 - Render uses port `10000` — set `ASPNETCORE_URLS=http://+:10000` and `PORT=10000`
-- Keep Render warm: cron-job.org pings `/ping` every 10 minutes
+- Keep Render warm: cron-job.org pings `/health` every 10 minutes
+
+---
+
+## 🎨 Chat Themes
+
+5 selectable themes — user picks from the palette icon on the homepage. Choice persists in `localStorage`.
+
+| Theme | Palette | Mode | Vibe |
+|---|---|---|---|
+| **Obsidian** (default) | Amber on deep black | Dark | Warm, the original |
+| **Monolith** | Platinum + Electric Blue | Dark | Cold intellect, zero noise |
+| **Counsel** | Charcoal + Gold, Serif | Dark | Senior partner's office, gravitas |
+| **Signal** | Navy + White + Green | Light | Trust-first, corporate-safe |
+| **Slate Editorial** | Near-Black + Coral | Dark | Editorial confidence, shipped product feel |
+
+Themes affect: chat background, message bubbles, avatars, input bar, typing indicator, navbar, follow-up buttons, source banners, bold/list text highlighting, and the live dot color.
 
 ---
 
