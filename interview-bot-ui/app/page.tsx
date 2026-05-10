@@ -521,6 +521,37 @@ export default function HomePage() {
                 </svg>
               </button>
 
+              {/* Prepare for Interview */}
+              <button onClick={() => router.push("/prepare")} style={{
+                display: "flex", alignItems: "center", gap: 14,
+                padding: "14px 16px", borderRadius: 16,
+                border: `1px solid ${C.border}`, background: C.input,
+                cursor: "pointer", textAlign: "left", width: "100%", fontFamily: "inherit",
+              }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+                  background: C.card,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 20h9" stroke={C.subtle} strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
+                          stroke={C.subtle} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>
+                    Prepare for Interview
+                  </p>
+                  <p style={{ fontSize: 12, color: C.muted, margin: "2px 0 0" }}>
+                    Read your knowledge base Q&A before the interview
+                  </p>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18l6-6-6-6" stroke={C.muted} strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+
               {/* Re-ingest */}
               <button
                 onClick={handleIngest}
