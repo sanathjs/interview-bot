@@ -1,15 +1,7 @@
 "use client";
 
 import { useState, useRef, KeyboardEvent } from "react";
-
-const C = {
-  bg:     "#141417",
-  border: "#32323c",
-  borderFocus: "#f59e0b",
-  text:   "#e8e8ef",
-  muted:  "#6b6b7d",
-  amber:  "#f59e0b",
-};
+import { useTheme } from "@/components/ThemeProvider";
 
 interface Props {
   onSend: (message: string) => void;
@@ -21,6 +13,7 @@ type MicState = "idle" | "recording" | "transcribing";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5267";
 
 export default function InputBar({ onSend, disabled }: Props) {
+  const C = useTheme();
   const [input, setInput]       = useState("");
   const [micState, setMicState] = useState<MicState>("idle");
   const [micError, setMicError] = useState<string | null>(null);
@@ -100,7 +93,7 @@ export default function InputBar({ onSend, disabled }: Props) {
   return (
     <div style={{
       padding: "10px 12px 10px",
-      background: "#141417",
+      background: C.header,
     }}>
       {/* Error / hint row */}
       {(micError || isRecording) && (
@@ -120,11 +113,11 @@ export default function InputBar({ onSend, disabled }: Props) {
         {/* Input pill — auto-grows, max 5 lines */}
         <div style={{
           flex: 1, display: "flex", alignItems: "flex-end",
-          background: "#1c1c21",
+          background: C.card,
           border: `1px solid ${isRecording ? C.amber : inputFocused ? C.amber : C.border}`,
           borderRadius: 22, padding: "0 4px 0 14px",
           transition: "border-color 0.2s",
-          boxShadow: inputFocused ? "0 0 0 3px rgba(245,158,11,0.08)" : "none",
+          boxShadow: inputFocused ? `0 0 0 3px ${C.amberBg}` : "none",
           minHeight: 44,
         }}>
           <textarea
@@ -163,11 +156,11 @@ export default function InputBar({ onSend, disabled }: Props) {
             width: 44, height: 44, borderRadius: "50%", border: "none",
             cursor: disabled || isTranscribing ? "not-allowed" : "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            background: isRecording ? "rgba(245,158,11,0.15)" : "#1c1c21",
-            outline: `1px solid ${isRecording ? "rgba(245,158,11,0.5)" : C.border}`,
-            color: isRecording ? C.amber : isTranscribing ? "#4a4a58" : "#9292a4",
+            background: isRecording ? C.amberBg : C.card,
+            outline: `1px solid ${isRecording ? C.amberBorder : C.border}`,
+            color: isRecording ? C.amber : isTranscribing ? C.muted : C.subtle,
             transition: "all 0.2s",
-            boxShadow: isRecording ? "0 0 12px rgba(245,158,11,0.2)" : "none",
+            boxShadow: isRecording ? `0 0 12px ${C.amberGlow}` : "none",
           }}>
           {isTranscribing ? (
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
@@ -195,10 +188,10 @@ export default function InputBar({ onSend, disabled }: Props) {
             width: 44, height: 44, borderRadius: "50%", border: "none",
             cursor: canSend ? "pointer" : "not-allowed",
             display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            background: canSend ? "linear-gradient(135deg, #f59e0b, #d97706)" : "#1c1c21",
+            background: canSend ? `linear-gradient(135deg, ${C.amber}, ${C.amberDark})` : C.card,
             outline: `1px solid ${canSend ? "transparent" : C.border}`,
             opacity: canSend ? 1 : 0.35,
-            boxShadow: canSend ? "0 0 16px rgba(245,158,11,0.35)" : "none",
+            boxShadow: canSend ? `0 0 16px ${C.amberGlow}` : "none",
             transition: "all 0.2s",
           }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none">

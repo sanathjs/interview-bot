@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
+import { DM_Sans, Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
   variable: "--font-dm-sans",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -32,14 +39,14 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${dmSans.variable} antialiased`}
+        className={`${dmSans.variable} ${inter.variable} antialiased`}
         style={{
           background: "#0d0d0f", color: "#e8e8ef",
           fontFamily: "var(--font-dm-sans), DM Sans, sans-serif",
           overscrollBehavior: "none",
         }}
       >
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

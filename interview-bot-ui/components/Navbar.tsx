@@ -2,16 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-
-const C = {
-  bg:          "rgba(13,13,15,0.92)",
-  border:      "rgba(255,255,255,0.06)",
-  text:        "#e8e8ef",
-  muted:       "#6b6b7d",
-  amber:       "#f59e0b",
-  amberBg:     "rgba(245,158,11,0.12)",
-  amberBorder: "rgba(245,158,11,0.25)",
-};
+import { useTheme } from "@/components/ThemeProvider";
 
 const adminLinks = [
   {
@@ -53,6 +44,7 @@ const adminLinks = [
 ];
 
 export default function Navbar() {
+  const C = useTheme();
   const pathname = usePathname();
   const router   = useRouter();
 

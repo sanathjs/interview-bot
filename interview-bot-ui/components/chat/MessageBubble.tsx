@@ -3,18 +3,10 @@
 import { useState } from "react";
 import { Message } from "@/types";
 import ArchitectureCard from "@/components/chat/ArchitectureCard";
-
-const C = {
-  card:   "#1c1c21",
-  border: "#32323c",
-  text:   "#e8e8ef",
-  muted:  "#6b6b7d",
-  subtle: "#9292a4",
-  amber:  "#f59e0b",
-  input:  "#141417",
-};
+import { useTheme } from "@/components/ThemeProvider";
 
 function RenderText({ text, streaming }: { text: string; streaming?: boolean }) {
+  const C = useTheme();
   const lines = text.split("\n");
   return (
     <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.65, fontSize: 14 }}>
@@ -34,10 +26,10 @@ function RenderText({ text, streaming }: { text: string; streaming?: boolean }) 
           const cleanName = name.replace(/\*\*/g, "");
           return (
             <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-              <span style={{ color: "#f59e0b", fontSize: 16, lineHeight: 1.4, flexShrink: 0, marginTop: 1 }}>▸</span>
+              <span style={{ color: C.listBullet, fontSize: 16, lineHeight: 1.4, flexShrink: 0, marginTop: 1 }}>▸</span>
               <span>
-                <strong style={{ fontWeight: 700, color: "#f59e0b" }}>{cleanName}</strong>
-                {rest && <span style={{ color: "#9292a4" }}>{rest}</span>}
+                <strong style={{ fontWeight: 700, color: C.listBullet }}>{cleanName}</strong>
+                {rest && <span style={{ color: C.subtle }}>{rest}</span>}
               </span>
             </div>
           );
@@ -48,7 +40,7 @@ function RenderText({ text, streaming }: { text: string; streaming?: boolean }) 
           <div key={i}>
             {parts.map((part, j) =>
               j % 2 === 1
-                ? <strong key={j} style={{ fontWeight: 600, color: "#fcd34d" }}>{part}</strong>
+                ? <strong key={j} style={{ fontWeight: 600, color: C.boldHighlight }}>{part}</strong>
                 : <span key={j}>{part}</span>
             )}
             {streaming && i === lines.length - 1 && (
@@ -66,6 +58,7 @@ function RenderText({ text, streaming }: { text: string; streaming?: boolean }) 
 }
 
 function PlayButton({ text }: { text: string }) {
+  const C = useTheme();
   const [playing, setPlaying] = useState(false);
   const toggle = () => {
     if (playing) { window.speechSynthesis.cancel(); setPlaying(false); return; }
@@ -101,6 +94,7 @@ function SourceBanner({
   sources?: Message["sources"];
   showSourceDetails: boolean;
 }) {
+  const C = useTheme();
   const [expanded, setExpanded] = useState(false);
 
   // Respect the toggle — hide entirely if off
@@ -129,9 +123,9 @@ function SourceBanner({
   const isNotFound = answerSource === "not_found";
   const isLLMGen   = answerSource === "llm_general";
 
-  const dotColor = isKB ? "#34d399" : isLLM ? "#818cf8" : C.amber;
-  const bg       = isKB ? "rgba(52,211,153,0.07)" : isLLM ? "rgba(99,102,241,0.07)" : "rgba(245,158,11,0.07)";
-  const border   = isKB ? "rgba(52,211,153,0.2)"  : isLLM ? "rgba(99,102,241,0.2)"  : "rgba(245,158,11,0.2)";
+  const dotColor = isKB ? C.kbDot : isLLM ? C.aiDot : C.amber;
+  const bg       = isKB ? "rgba(52,211,153,0.07)" : isLLM ? "rgba(99,102,241,0.07)" : C.amberBg;
+  const border   = isKB ? "rgba(52,211,153,0.2)"  : isLLM ? "rgba(99,102,241,0.2)"  : C.amberBorder;
 
   const label = isKB
     ? "Answered from Sanath's Knowledge Base"
@@ -218,6 +212,7 @@ interface Props {
 export default function MessageBubble({
   message, streaming, showFollowUps, showSourceDetails, usedFollowUps, onFeedback, onFollowUp,
 }: Props) {
+  const C = useTheme();
   const isBot          = message.role === "bot";
   const isUnanswered   = message.answerSource === "unanswered";
   const isGreeting     = message.answerSource === "greeting";
@@ -238,14 +233,14 @@ export default function MessageBubble({
     if (!message.confidenceScore || isUnanswered || isGreeting) return null;
     const pct   = Math.round(message.confidenceScore * 100);
     const color = message.confidenceScore >= 0.65 ? "#34d399"
-                : message.confidenceScore >= 0.55 ? "#fbbf24" : "#f87171";
+                : message.confidenceScore >= 0.55 ? C.boldHighlight : "#f87171";
     return { pct, color };
   })();
 
-  const botBg = isUnanswered ? "rgba(245,158,11,0.07)"
+  const botBg = isUnanswered ? C.amberBg
               : isFallback   ? "rgba(99,102,241,0.07)"
               : C.card;
-  const botBorder = isUnanswered ? "1px solid rgba(245,158,11,0.18)"
+  const botBorder = isUnanswered ? `1px solid ${C.amberBorder}`
                   : isFallback   ? "1px solid rgba(99,102,241,0.18)"
                   : `1px solid ${C.border}`;
 
@@ -263,8 +258,8 @@ export default function MessageBubble({
       {isBot && (
         <div style={{
           width: 32, height: 32, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-          border: "1.5px solid rgba(245,158,11,0.35)", overflow: "hidden",
-          boxShadow: "0 0 0 2px rgba(245,158,11,0.1)",
+          border: `1.5px solid ${C.amberBorder}`, overflow: "hidden",
+          boxShadow: `0 0 0 2px ${C.amberBg}`,
         }}>
           <img
             src="/profile-avatar.jpg"
@@ -274,8 +269,8 @@ export default function MessageBubble({
               const el = e.currentTarget;
               el.style.display = "none";
               if (el.parentElement) {
-                el.parentElement.style.background = "rgba(245,158,11,0.12)";
-                el.parentElement.innerHTML = `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#f59e0b">S</span>`;
+                el.parentElement.style.background = C.amberBg;
+                el.parentElement.innerHTML = `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${C.amber}">S</span>`;
               }
             }}
           />
@@ -295,7 +290,7 @@ export default function MessageBubble({
         <div style={{
           padding: isArchitecture ? "0" : "12px 16px", width: "100%",
           borderRadius: isBot ? "16px 16px 16px 4px" : "16px 16px 4px 16px",
-          background: isArchitecture ? "transparent" : (isBot ? botBg : "linear-gradient(135deg, #f59e0b, #d97706)"),
+          background: isArchitecture ? "transparent" : (isBot ? botBg : `linear-gradient(135deg, ${C.amber}, ${C.amberDark})`),
           border: isArchitecture ? "none" : (isBot ? botBorder : "none"),
           color: isBot ? C.text : "white",
         }}>
@@ -393,17 +388,17 @@ export default function MessageBubble({
                   <button key={i} onClick={() => onFollowUp?.(q)} style={{
                     textAlign: "left", fontSize: 12, padding: "8px 12px", borderRadius: 10,
                     cursor: "pointer", width: "100%", fontFamily: "inherit",
-                    background: isLLMAction ? "rgba(245,158,11,0.1)" : C.input,
-                    border: `1px solid ${isLLMAction ? "rgba(245,158,11,0.4)" : C.border}`,
-                    color: isLLMAction ? "#fbbf24" : C.subtle,
+                    background: isLLMAction ? C.amberBg : C.input,
+                    border: `1px solid ${isLLMAction ? C.amberBorder : C.border}`,
+                    color: isLLMAction ? C.boldHighlight : C.subtle,
                   }}
                   onMouseEnter={e => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = isLLMAction ? "rgba(245,158,11,0.7)" : "rgba(245,158,11,0.3)";
-                    (e.currentTarget as HTMLButtonElement).style.color = "#fbbf24";
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = isLLMAction ? C.amberBorder : C.amberBorder;
+                    (e.currentTarget as HTMLButtonElement).style.color = C.boldHighlight;
                   }}
                   onMouseLeave={e => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = isLLMAction ? "rgba(245,158,11,0.4)" : C.border;
-                    (e.currentTarget as HTMLButtonElement).style.color = isLLMAction ? "#fbbf24" : C.subtle;
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = isLLMAction ? C.amberBorder : C.border;
+                    (e.currentTarget as HTMLButtonElement).style.color = isLLMAction ? C.boldHighlight : C.subtle;
                   }}>
                     {isLLMAction ? "✨ " : "→ "}{q}
                   </button>
@@ -420,7 +415,7 @@ export default function MessageBubble({
           width: 32, height: 32, borderRadius: "50%",
           flexShrink: 0,   // never compress
           marginTop: 2,
-          background: "linear-gradient(135deg, #f59e0b, #d97706)",
+          background: `linear-gradient(135deg, ${C.amber}, ${C.amberDark})`,
           display: "flex", alignItems: "center", justifyContent: "center",
           order: 1,        // always stays after the bubble in the row
         }}>

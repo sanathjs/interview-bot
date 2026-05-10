@@ -9,19 +9,9 @@ import TypingIndicator from "@/components/chat/TypingIndicator";
 import InputBar from "@/components/chat/InputBar";
 import Navbar from "@/components/Navbar";
 import ProjectExplainer from "@/components/ProjectExplainer";
+import { useTheme } from "@/components/ThemeProvider";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5267";
-
-const C = {
-  bg:     "#0d0d0f",
-  card:   "#1c1c21",
-  header: "#141417",
-  border: "#32323c",
-  text:   "#e8e8ef",
-  muted:  "#6b6b7d",
-  subtle: "#9292a4",
-  amber:  "#f59e0b",
-};
 
 let counter = 0;
 function newId() { counter += 1; return `msg-${counter}`; }
@@ -36,6 +26,7 @@ const HISTORY_WINDOW = 6;
 function Toggle({ on, onChange, label, desc }: {
   on: boolean; onChange: (v: boolean) => void; label: string; desc: string;
 }) {
+  const C = useTheme();
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -48,10 +39,10 @@ function Toggle({ on, onChange, label, desc }: {
       </div>
       <button onClick={() => onChange(!on)} style={{
         width: 38, height: 22, borderRadius: 11, border: "none",
-        background: on ? "linear-gradient(135deg, #f59e0b, #d97706)" : C.border,
+        background: on ? `linear-gradient(135deg, ${C.amber}, ${C.amberDark})` : C.border,
         cursor: "pointer", position: "relative", flexShrink: 0, marginLeft: 12,
         transition: "background 0.2s",
-        boxShadow: on ? "0 0 8px rgba(245,158,11,0.3)" : "none",
+        boxShadow: on ? `0 0 8px ${C.amberGlow}` : "none",
       }}>
         <div style={{
           width: 16, height: 16, borderRadius: "50%", background: "white",
@@ -64,6 +55,7 @@ function Toggle({ on, onChange, label, desc }: {
 }
 
 export default function ChatPage() {
+  const C = useTheme();
   const [messages, setMessages]           = useState<Message[]>([]);
   const [sessionId, setSessionId]         = useState("");
   const [isLoading, setIsLoading]         = useState(false);
@@ -334,7 +326,7 @@ export default function ChatPage() {
     return (
       <div style={{
         minHeight: "100vh", background: C.bg, display: "flex",
-        flexDirection: "column", fontFamily: "'DM Sans', sans-serif",
+        flexDirection: "column", fontFamily: C.fontBody,
       }}>
         <Navbar />
 
@@ -347,9 +339,9 @@ export default function ChatPage() {
         }}>
           <div style={{
             width: 7, height: 7, borderRadius: "50%",
-            background: "#34d399", boxShadow: "0 0 6px #34d399",
+            background: C.liveDot, boxShadow: "0 0 6px #34d399",
           }} />
-          <span style={{ fontSize: 12, color: "#34d399", fontWeight: 500 }}>
+          <span style={{ fontSize: 12, color: C.liveDot, fontWeight: 500 }}>
             Session ended · {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
         </div>
@@ -407,7 +399,7 @@ export default function ChatPage() {
           <div style={{ display: "flex", gap: 12 }}>
             <button onClick={() => window.location.reload()} style={{
               padding: "10px 24px", borderRadius: 16, border: "none", cursor: "pointer",
-              background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white",
+              background: `linear-gradient(135deg, ${C.amber}, ${C.amberDark})`, color: "white",
               fontSize: 14, fontWeight: 600, fontFamily: "inherit",
             }}>New Session</button>
             <a href="/" style={{
@@ -450,7 +442,7 @@ export default function ChatPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
             <div style={{
               width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-              border: "1.5px solid rgba(245,158,11,0.35)", overflow: "hidden",
+              border: `1.5px solid ${C.amberBorder}`, overflow: "hidden",
               position: "relative",
             }}>
               <img src="/profile-avatar.jpg" alt="Sanath"
@@ -458,9 +450,9 @@ export default function ChatPage() {
                 onError={e => {
                   e.currentTarget.style.display = "none";
                   if (e.currentTarget.parentElement) {
-                    e.currentTarget.parentElement.style.background = "rgba(245,158,11,0.15)";
+                    e.currentTarget.parentElement.style.background = C.amberBg;
                     e.currentTarget.parentElement.innerHTML =
-                      `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#f59e0b">S</span>`;
+                      `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:${C.amber}">S</span>`;
                   }
                 }}
               />
@@ -468,8 +460,8 @@ export default function ChatPage() {
               <div style={{
                 position: "absolute", bottom: 1, right: 1,
                 width: 9, height: 9, borderRadius: "50%",
-                background: "#34d399", border: "1.5px solid #141417",
-                boxShadow: "0 0 4px #34d399",
+                background: C.liveDot, border: `1.5px solid ${C.header}`,
+                boxShadow: `0 0 4px ${C.liveDot}`,
                 animation: "pulse 2s ease infinite",
               }} />
             </div>
@@ -480,7 +472,7 @@ export default function ChatPage() {
               }}>
                 Sanath Kumar J S
               </p>
-              <p style={{ fontSize: 11, color: "#34d399", margin: "1px 0 0", fontWeight: 500 }}>
+              <p style={{ fontSize: 11, color: C.liveDot, margin: "1px 0 0", fontWeight: 500 }}>
                 Live · {ROUND_LABELS[roundType] || "General"}
                 {companyName ? ` · ${companyName}` : ""}
                 {avgConfidence !== null ? ` · ${confPct}% match` : ""}
@@ -497,8 +489,8 @@ export default function ChatPage() {
                 <button onClick={() => setShowSettings(s => !s)} style={{
                   width: 36, height: 36, borderRadius: 10, border: "none", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  background: showSettings ? "rgba(245,158,11,0.12)" : C.card,
-                  outline: `1px solid ${showSettings ? "rgba(245,158,11,0.3)" : C.border}`,
+                  background: showSettings ? C.amberBg : C.card,
+                  outline: `1px solid ${showSettings ? C.amberBorder : C.border}`,
                   color: showSettings ? C.amber : C.subtle,
                 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -514,7 +506,7 @@ export default function ChatPage() {
                     padding: 16, zIndex: 100, boxShadow: "0 16px 40px rgba(0,0,0,0.6)",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.amber, boxShadow: "0 0 6px #f59e0b" }} />
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.amber, boxShadow: `0 0 6px ${C.amber}` }} />
                       <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: 0 }}>Admin Settings</p>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -614,7 +606,7 @@ export default function ChatPage() {
                     color: C.subtle, transition: "all 0.15s",
                   }}
                   onMouseEnter={e => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(245,158,11,0.35)";
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = C.amberBorder;
                     (e.currentTarget as HTMLButtonElement).style.color = C.amber;
                   }}
                   onMouseLeave={e => {

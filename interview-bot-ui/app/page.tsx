@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { THEMES } from "@/lib/themes";
+import { useThemeSwitch } from "@/components/ThemeProvider";
 
 const PREP_PIN = process.env.NEXT_PUBLIC_PREP_PIN || "1234";
 
@@ -27,6 +29,7 @@ const C = {
 
 export default function HomePage() {
   const router = useRouter();
+  const [theme, setThemeId] = useThemeSwitch();
   const [step, setStep]                       = useState<"choose" | "pin" | "interviewer" | "admin-dashboard">("choose");
   const [ingestStatus, setIngestStatus]       = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [pin, setPin]                         = useState("");
@@ -36,6 +39,7 @@ export default function HomePage() {
   const [companyName, setCompanyName]         = useState("");
   const [roundType, setRoundType]             = useState("general");
   const [formError, setFormError]             = useState("");
+  const [showThemes, setShowThemes]           = useState(false);
 
   const handlePinSubmit = () => {
     if (pin === PREP_PIN) {
@@ -107,8 +111,95 @@ export default function HomePage() {
       {/* Ambient glow */}
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none",
-        background: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(245,158,11,0.08) 0%, transparent 70%)",
+        background: `radial-gradient(ellipse 80% 50% at 50% -10%, ${theme.amberBg} 0%, transparent 70%)`,
       }} />
+
+      {/* Theme picker button — top right */}
+      <button
+        onClick={() => setShowThemes(s => !s)}
+        style={{
+          position: "fixed", top: 16, right: 16, zIndex: 50,
+          width: 40, height: 40, borderRadius: 12,
+          background: showThemes ? theme.amberBg : C.card,
+          border: `1px solid ${showThemes ? theme.amberBorder : C.border}`,
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          color: showThemes ? theme.amber : C.muted,
+          transition: "all 0.2s",
+        }}
+        title="Choose chat theme"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5"/>
+          <circle cx="12" cy="8" r="2" fill="currentColor"/>
+          <circle cx="8" cy="14" r="2" fill="currentColor"/>
+          <circle cx="16" cy="14" r="2" fill="currentColor"/>
+        </svg>
+      </button>
+
+      {/* Theme picker panel */}
+      {showThemes && (
+        <div style={{
+          position: "fixed", top: 64, right: 16, zIndex: 50,
+          width: 300, maxHeight: "80vh", overflowY: "auto",
+          background: C.card, border: `1px solid ${C.border}`,
+          borderRadius: 16, padding: 16,
+          boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+        }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: C.text, margin: "0 0 4px" }}>
+            Chat Theme
+          </p>
+          <p style={{ fontSize: 11, color: C.muted, margin: "0 0 14px" }}>
+            Changes the look of the interview chat.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {THEMES.map(t => {
+              const active = t.id === theme.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => { setThemeId(t.id); setShowThemes(false); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "10px 12px", borderRadius: 12,
+                    background: active ? theme.amberBg : "transparent",
+                    border: `1px solid ${active ? theme.amberBorder : C.border}`,
+                    cursor: "pointer", textAlign: "left", width: "100%",
+                    fontFamily: "inherit", transition: "all 0.15s",
+                  }}
+                >
+                  {/* Preview swatch */}
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                    background: t.previewBg,
+                    border: `1px solid ${t.mode === "light" ? "#e2e8f0" : "rgba(255,255,255,0.08)"}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    gap: 3,
+                  }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: t.previewAccent }} />
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: t.previewAccent, opacity: 0.5 }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                      fontSize: 13, fontWeight: active ? 600 : 400,
+                      color: active ? theme.amber : C.text, margin: 0,
+                    }}>
+                      {t.name}
+                    </p>
+                    <p style={{ fontSize: 10, color: C.muted, margin: "2px 0 0" }}>
+                      {t.palette}
+                    </p>
+                  </div>
+                  {active && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <polyline points="20 6 9 17 4 12" stroke={theme.amber} strokeWidth="2.5" strokeLinecap="round"/>
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Logo */}
       <div style={{
