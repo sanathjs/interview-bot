@@ -24,6 +24,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (saved) setTheme(getThemeById(saved));
   }, []);
 
+  // Apply theme to document body so all pages inherit it
+  useEffect(() => {
+    document.body.style.background = theme.bg;
+    document.body.style.color = theme.text;
+    document.body.style.fontFamily = theme.fontBody;
+    // Update meta theme-color for mobile browser chrome
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", theme.bg);
+  }, [theme]);
+
   const setThemeId = useCallback((id: string) => {
     const t = getThemeById(id);
     setTheme(t);

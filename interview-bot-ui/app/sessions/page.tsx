@@ -3,17 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSessions } from "@/lib/api";
-
-const C = {
-  bg:     "#0d0d0f",
-  card:   "#1c1c21",
-  border: "#32323c",
-  text:   "#e8e8ef",
-  muted:  "#6b6b7d",
-  subtle: "#9292a4",
-  amber:  "#f59e0b",
-  input:  "#141417",
-};
+import { useTheme } from "@/components/ThemeProvider";
 
 export interface Session {
   id: number;
@@ -45,6 +35,7 @@ const confColor = (score: number) =>
   score >= 0.65 ? "#34d399" : score >= 0.55 ? "#fbbf24" : "#f87171";
 
 export default function SessionsPage() {
+  const C = useTheme();
   const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading]   = useState(true);

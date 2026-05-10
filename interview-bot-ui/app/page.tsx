@@ -16,20 +16,10 @@ const ROUND_TYPES = [
   { value: "general",       label: "General",       desc: "Mixed or exploratory interview" },
 ];
 
-const C = {
-  bg:     "#0d0d0f",
-  card:   "#1c1c21",
-  border: "#32323c",
-  input:  "#141417",
-  text:   "#e8e8ef",
-  muted:  "#6b6b7d",
-  subtle: "#9292a4",
-  amber:  "#f59e0b",
-};
-
 export default function HomePage() {
   const router = useRouter();
   const [theme, setThemeId] = useThemeSwitch();
+  const C = theme;
   const [step, setStep]                       = useState<"choose" | "pin" | "interviewer" | "admin-dashboard">("choose");
   const [ingestStatus, setIngestStatus]       = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [pin, setPin]                         = useState("");
@@ -85,10 +75,10 @@ export default function HomePage() {
   };
 
   const amberBtn: React.CSSProperties = {
-    background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white",
+    background: `linear-gradient(135deg, ${C.amber}, ${C.amberDark})`, color: "white",
     border: "none", borderRadius: 16, padding: "13px 0", width: "100%",
     fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-    boxShadow: "0 0 20px rgba(245,158,11,0.25)",
+    boxShadow: `0 0 20px ${C.amberGlow}`,
   };
 
   const backBtn: React.CSSProperties = {
@@ -208,9 +198,9 @@ export default function HomePage() {
       }}>
         <div style={{
           width: 44, height: 44, borderRadius: 14,
-          background: "linear-gradient(135deg, #f59e0b, #d97706)",
+          background: `linear-gradient(135deg, ${C.amber}, ${C.amberDark})`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 0 24px rgba(245,158,11,0.35)",
+          boxShadow: `0 0 24px ${C.amberGlow}`,
         }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" fill="white"/>
@@ -239,17 +229,17 @@ export default function HomePage() {
           }}>
             <div style={{
               width: 52, height: 52, borderRadius: "50%", flexShrink: 0,
-              border: "2px solid rgba(245,158,11,0.4)", overflow: "hidden",
-              boxShadow: "0 0 0 3px rgba(245,158,11,0.08)",
+              border: `2px solid ${C.amberBorder}`, overflow: "hidden",
+              boxShadow: `0 0 0 3px ${C.amberBg}`,
             }}>
               <img src="/profile-avatar.jpg" alt="Sanath"
                 style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                 onError={e => {
                   e.currentTarget.style.display = "none";
                   if (e.currentTarget.parentElement) {
-                    e.currentTarget.parentElement.style.background = "rgba(245,158,11,0.12)";
+                    e.currentTarget.parentElement.style.background = C.amberBg;
                     e.currentTarget.parentElement.innerHTML =
-                      `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#f59e0b">S</span>`;
+                      `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:${C.amber}">S</span>`;
                   }
                 }}
               />
@@ -343,7 +333,7 @@ export default function HomePage() {
           {/* Disclaimer */}
           <div style={{
             padding: "12px 16px",
-            background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.13)",
+            background: C.amberBg, border: `1px solid ${C.amberBorder}`,
             borderRadius: 16, display: "flex", gap: 10, alignItems: "flex-start",
           }}>
             <span style={{ fontSize: 13, flexShrink: 0 }}>⚠️</span>
@@ -378,9 +368,9 @@ export default function HomePage() {
               <button onClick={() => setStep("interviewer")} style={{
                 display: "flex", alignItems: "center", gap: 16,
                 padding: "16px 20px", borderRadius: 16, border: "none",
-                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                background: `linear-gradient(135deg, ${C.amber}, ${C.amberDark})`,
                 cursor: "pointer", textAlign: "left", width: "100%",
-                boxShadow: "0 0 24px rgba(245,158,11,0.2)", fontFamily: "inherit",
+                boxShadow: `0 0 24px ${C.amberGlow}`, fontFamily: "inherit",
               }}>
                 <div style={{
                   width: 40, height: 40, borderRadius: 12, flexShrink: 0,
@@ -494,15 +484,15 @@ export default function HomePage() {
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
               <div style={{
                 width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
-                border: "1.5px solid rgba(245,158,11,0.4)", overflow: "hidden",
+                border: `1.5px solid ${C.amberBorder}`, overflow: "hidden",
               }}>
                 <img src="/profile-avatar.jpg" alt="Sanath"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   onError={e => {
                     e.currentTarget.style.display = "none";
                     if (e.currentTarget.parentElement) {
-                      e.currentTarget.parentElement.style.background = "rgba(245,158,11,0.15)";
-                      e.currentTarget.parentElement.innerHTML = `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#f59e0b">S</span>`;
+                      e.currentTarget.parentElement.style.background = C.amberBg;
+                      e.currentTarget.parentElement.innerHTML = `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:${C.amber}">S</span>`;
                     }
                   }}
                 />
@@ -525,9 +515,9 @@ export default function HomePage() {
               <button onClick={() => router.push("/chat")} style={{
                 display: "flex", alignItems: "center", gap: 14,
                 padding: "14px 16px", borderRadius: 16, border: "none",
-                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                background: `linear-gradient(135deg, ${C.amber}, ${C.amberDark})`,
                 cursor: "pointer", textAlign: "left", width: "100%", fontFamily: "inherit",
-                boxShadow: "0 0 24px rgba(245,158,11,0.2)",
+                boxShadow: `0 0 24px ${C.amberGlow}`,
               }}>
                 <div style={{
                   width: 38, height: 38, borderRadius: 12, flexShrink: 0,
@@ -756,7 +746,7 @@ export default function HomePage() {
                       display: "flex", alignItems: "center", gap: 12,
                       padding: "11px 14px", borderRadius: 12, cursor: "pointer",
                       textAlign: "left", width: "100%", fontFamily: "inherit",
-                      background: roundType === r.value ? "rgba(245,158,11,0.08)" : C.input,
+                      background: roundType === r.value ? C.amberBg : C.input,
                       border: `1px solid ${roundType === r.value ? C.amber : C.border}`,
                     }}>
                       <div style={{

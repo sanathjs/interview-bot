@@ -3,17 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSessionDetail } from "@/lib/api";
-
-const C = {
-  bg:     "#0d0d0f",
-  card:   "#1c1c21",
-  border: "#32323c",
-  text:   "#e8e8ef",
-  muted:  "#6b6b7d",
-  subtle: "#9292a4",
-  amber:  "#f59e0b",
-  input:  "#141417",
-};
+import { useTheme } from "@/components/ThemeProvider";
 
 interface TranscriptMessage {
   id: number;
@@ -66,6 +56,7 @@ function confColor(score: number) {
 }
 
 function SourceBadge({ source }: { source: string | null }) {
+  const C = useTheme();
   if (!source || source === "greeting") return null;
   const isKB      = source === "knowledge_base";
   const isLLM     = source === "fallback_ai";
@@ -85,6 +76,7 @@ function SourceBadge({ source }: { source: string | null }) {
 }
 
 export default function SessionTranscriptPage() {
+  const C = useTheme();
   const params = useParams();
   const router = useRouter();
   const [session, setSession] = useState<SessionDetail | null>(null);

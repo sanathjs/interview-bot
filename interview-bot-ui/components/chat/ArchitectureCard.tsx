@@ -3,19 +3,14 @@
 // No props except projectId (1–5). All data is local — zero API calls.
 
 import React from "react";
+import { useTheme } from "@/components/ThemeProvider";
 
-const C = {
-  bg:       "#141417",
-  card:     "#1c1c21",
-  border:   "#32323c",
-  text:     "#e8e8ef",
-  muted:    "#6b6b7d",
-  subtle:   "#9292a4",
-  amber:    "#f59e0b",
-  green:    "#34d399",
-  purple:   "#818cf8",
-  blue:     "#60a5fa",
-  red:      "#f87171",
+// Functional status colors (not theme-dependent)
+const STATUS = {
+  green:  "#34d399",
+  purple: "#818cf8",
+  blue:   "#60a5fa",
+  red:    "#f87171",
 };
 
 function hexToRgb(hex: string) {
@@ -27,7 +22,9 @@ function hexToRgb(hex: string) {
   ].join(",");
 }
 
-function DownArrow({ color = C.amber }: { color?: string }) {
+function DownArrow({ color }: { color?: string }) {
+  const C = useTheme();
+  color = color ?? C.amber;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, margin: "2px 0" }}>
       <div style={{ width: 1, height: 10, background: color, opacity: 0.4 }} />
@@ -38,14 +35,16 @@ function DownArrow({ color = C.amber }: { color?: string }) {
   );
 }
 
-function Step({ n, label, sub, color = C.amber, last = false }: {
+function Step({ n, label, sub, color, last = false }: {
   n: number; label: string; sub?: string; color?: string; last?: boolean;
 }) {
+  const C = useTheme();
+  color = color ?? C.amber;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{
         display: "flex", alignItems: "flex-start", gap: 8, width: "100%",
-        background: "#0f0f13", border: `1px solid ${C.border}`,
+        background: C.bg, border: `1px solid ${C.border}`,
         borderRadius: 8, padding: "7px 10px",
       }}>
         <div style={{
@@ -67,12 +66,13 @@ function Step({ n, label, sub, color = C.amber, last = false }: {
 }
 
 function KV({ rows }: { rows: [string, string][] }) {
+  const C = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {rows.map(([k, v]) => (
         <div key={k} style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: "#0f0f13", border: `1px solid ${C.border}`,
+          background: C.bg, border: `1px solid ${C.border}`,
           borderRadius: 7, padding: "5px 9px", gap: 8,
         }}>
           <span style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>{k}</span>
@@ -84,6 +84,7 @@ function KV({ rows }: { rows: [string, string][] }) {
 }
 
 function SLabel({ children }: { children: string }) {
+  const C = useTheme();
   return (
     <p style={{ fontSize: 9, fontWeight: 700, color: C.muted, letterSpacing: "0.08em",
                 textTransform: "uppercase", margin: "12px 0 6px" }}>
@@ -93,6 +94,7 @@ function SLabel({ children }: { children: string }) {
 }
 
 function Callout({ text, color }: { text: string; color: string }) {
+  const C = useTheme();
   return (
     <div style={{
       background: `rgba(${hexToRgb(color)},0.08)`,
@@ -107,24 +109,25 @@ function Callout({ text, color }: { text: string; color: string }) {
 // ── Per-project diagrams ───────────────────────────────────────────────────────
 
 function AdvisorSearch() {
+  const C = useTheme();
   return (
     <>
       <SLabel>Search Pipeline</SLabel>
       <Step n={1} label="User types search query" sub='"I need guidance about my relationship falling apart"' color={C.amber} />
       <Step n={2} label="Embed query" sub="Azure OpenAI text-embedding-3-small → float[1536]" color={C.amber} />
       <Step n={3} label="Multi-embedding pgvector search" sub="3 columns: description (50%) · keywords (30%) · expertise (20%)" color={C.amber} />
-      <Step n={4} label="7-factor attribute scoring (parallel)" sub="keywords · categories · communication · methods · satisfaction · experience · empathy" color={C.purple} />
-      <Step n={5} label="Hybrid ranking" sub="semantic × 40% + attribute × 60% → top 20 advisors" color={C.green} />
-      <Step n={6} label="Lazy AI match summaries" sub="gpt-4.1-nano per advisor as user scrolls — never blocks search" color={C.blue} last />
+      <Step n={4} label="7-factor attribute scoring (parallel)" sub="keywords · categories · communication · methods · satisfaction · experience · empathy" color={STATUS.purple} />
+      <Step n={5} label="Hybrid ranking" sub="semantic × 40% + attribute × 60% → top 20 advisors" color={STATUS.green} />
+      <Step n={6} label="Lazy AI match summaries" sub="gpt-4.1-nano per advisor as user scrolls — never blocks search" color={STATUS.blue} last />
 
       <SLabel>Graceful Degradation</SLabel>
       {[
-        ["Azure OpenAI down", "Circuit breaker → attribute-only scoring takes over", C.green],
+        ["Azure OpenAI down", "Circuit breaker → attribute-only scoring takes over", STATUS.green],
         ["Embedding timeout", "4s limit → empty vector → fallback instantly", C.amber],
-        ["DB down", "Only full failure — no workaround", C.red],
+        ["DB down", "Only full failure — no workaround", STATUS.red],
       ].map(([s, r, c]) => (
         <div key={s as string} style={{
-          background: "#0f0f13", border: `1px solid ${C.border}`,
+          background: C.bg, border: `1px solid ${C.border}`,
           borderRadius: 7, padding: "6px 9px", marginBottom: 4,
         }}>
           <p style={{ fontSize: 10, fontWeight: 600, color: C.text, margin: 0 }}>{s as string}</p>
@@ -146,6 +149,7 @@ function AdvisorSearch() {
 }
 
 function FeedbackSearch() {
+  const C = useTheme();
   return (
     <>
       <Callout
@@ -154,9 +158,9 @@ function FeedbackSearch() {
       />
 
       <SLabel>Ingestion (runs on every new review)</SLabel>
-      <Step n={1} label="Session ends → review submitted" color={C.green} />
-      <Step n={2} label="Embed review text" sub="Azure OpenAI text-embedding-3-small → float[1536]" color={C.green} />
-      <Step n={3} label="Store in pgvector" sub="Partitioned by advisor_id — reviews never cross boundaries" color={C.green} last />
+      <Step n={1} label="Session ends → review submitted" color={STATUS.green} />
+      <Step n={2} label="Embed review text" sub="Azure OpenAI text-embedding-3-small → float[1536]" color={STATUS.green} />
+      <Step n={3} label="Store in pgvector" sub="Partitioned by advisor_id — reviews never cross boundaries" color={STATUS.green} last />
 
       <SLabel>Search Flow</SLabel>
       <Step n={1} label='User types in feedback search bar' sub='"show me feedback where advisor was genuinely honest"' color={C.amber} />
@@ -171,10 +175,10 @@ function FeedbackSearch() {
         ["Incremental ingestion", "New reviews indexed automatically after each session"],
       ].map(([k, v]) => (
         <div key={k} style={{
-          background: "#0f0f13", border: `1px solid ${C.border}`,
+          background: C.bg, border: `1px solid ${C.border}`,
           borderRadius: 7, padding: "6px 9px", marginBottom: 4,
         }}>
-          <p style={{ fontSize: 10, fontWeight: 600, color: C.green, margin: 0 }}>{k}</p>
+          <p style={{ fontSize: 10, fontWeight: 600, color: STATUS.green, margin: 0 }}>{k}</p>
           <p style={{ fontSize: 10, color: C.muted, margin: "2px 0 0" }}>{v}</p>
         </div>
       ))}
@@ -192,20 +196,21 @@ function FeedbackSearch() {
 }
 
 function InterviewBot() {
+  const C = useTheme();
   return (
     <>
       <SLabel>Architecture Layers</SLabel>
       {[
         { layer: "🌐  Frontend", detail: "Next.js 14 · Vercel · Tailwind CSS", color: C.amber },
-        { layer: "⚙️  Backend API", detail: ".NET 8 · Railway · RAG orchestration", color: C.purple },
-        { layer: "🧠  Embeddings", detail: "HuggingFace BAAI/bge-base-en-v1.5 · 768d", color: C.blue },
-        { layer: "🗄️  Vector DB", detail: "PostgreSQL + pgvector · Supabase · HNSW", color: C.green },
+        { layer: "⚙️  Backend API", detail: ".NET 8 · Railway · RAG orchestration", color: STATUS.purple },
+        { layer: "🧠  Embeddings", detail: "HuggingFace BAAI/bge-base-en-v1.5 · 768d", color: STATUS.blue },
+        { layer: "🗄️  Vector DB", detail: "PostgreSQL + pgvector · Supabase · HNSW", color: STATUS.green },
         { layer: "✨  LLM", detail: "Groq llama-3.3-70b · streaming responses", color: C.amber },
         { layer: "🎙️  Voice", detail: "Groq Whisper STT · Browser TTS playback", color: C.muted },
       ].map(({ layer, detail, color }) => (
         <div key={layer} style={{
           display: "flex", alignItems: "center", gap: 8,
-          background: "#0f0f13", border: `1px solid ${C.border}`,
+          background: C.bg, border: `1px solid ${C.border}`,
           borderRadius: 7, padding: "6px 9px", marginBottom: 4,
         }}>
           <div style={{ minWidth: 0 }}>
@@ -219,15 +224,15 @@ function InterviewBot() {
       <Step n={1} label="Question asked (text or voice)" color={C.amber} />
       <Step n={2} label="Embed question" sub="HuggingFace bge-base-en-v1.5 → 768d vector" color={C.amber} />
       <Step n={3} label="pgvector search + file boost" sub="Top 15 chunks → keyword-to-file boost → re-rank top 10" color={C.amber} />
-      <Step n={4} label="Confidence threshold" sub="≥0.65 HIGH · ≥0.58 MED · <0.58 LOW → log unanswered" color={C.purple} />
-      <Step n={5} label="Groq LLM generates answer as Sanath" sub="Streaming · conversational · anchored to KB content" color={C.green} last />
+      <Step n={4} label="Confidence threshold" sub="≥0.65 HIGH · ≥0.58 MED · <0.58 LOW → log unanswered" color={STATUS.purple} />
+      <Step n={5} label="Groq LLM generates answer as Sanath" sub="Streaming · conversational · anchored to KB content" color={STATUS.green} last />
 
       <SLabel>Cost</SLabel>
       <div style={{
         background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)",
         borderRadius: 8, padding: "8px 10px", textAlign: "center",
       }}>
-        <p style={{ fontSize: 18, fontWeight: 700, color: C.green, margin: 0 }}>$0 / month</p>
+        <p style={{ fontSize: 18, fontWeight: 700, color: STATUS.green, margin: 0 }}>$0 / month</p>
         <p style={{ fontSize: 10, color: C.muted, margin: "3px 0 0" }}>
           All free tiers — Vercel · Railway · Supabase · HuggingFace · Groq
         </p>
@@ -237,17 +242,18 @@ function InterviewBot() {
 }
 
 function JWTMigration() {
+  const C = useTheme();
   return (
     <>
       <Callout
         text="Migrated the entire Keen platform from session-based auth to JWT with zero downtime — killing active sessions would interrupt live paid advisor calls."
-        color={C.red}
+        color={STATUS.red}
       />
 
       <SLabel>3-Phase Migration Strategy</SLabel>
       <Step n={1} label="Dual-token validation window" sub="API accepts BOTH session tokens AND JWTs. New logins issue JWT only." color={C.amber} />
       <Step n={2} label="Natural token drain" sub="Old session tokens expire naturally. No forced logouts. Zero user impact." color={C.amber} />
-      <Step n={3} label="Legacy code path removed" sub="Once old token pool hits zero, session-based auth removed safely." color={C.green} last />
+      <Step n={3} label="Legacy code path removed" sub="Once old token pool hits zero, session-based auth removed safely." color={STATUS.green} last />
 
       <SLabel>Scope of Change</SLabel>
       {[
@@ -257,7 +263,7 @@ function JWTMigration() {
         ["Feature flags", "Instant rollback capability per client type if needed"],
       ].map(([k, v]) => (
         <div key={k} style={{
-          background: "#0f0f13", border: `1px solid ${C.border}`,
+          background: C.bg, border: `1px solid ${C.border}`,
           borderRadius: 7, padding: "6px 9px", marginBottom: 4,
         }}>
           <p style={{ fontSize: 10, fontWeight: 600, color: C.text, margin: 0 }}>{k}</p>
@@ -278,6 +284,7 @@ function JWTMigration() {
 }
 
 function Integrations() {
+  const C = useTheme();
   return (
     <>
       <SLabel>Integration Map</SLabel>
@@ -291,13 +298,13 @@ function Integrations() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
         {[
-          { name: "Zinrelo", purpose: "Loyalty rewards", detail: "Points, redemption, tier management", color: C.purple },
-          { name: "Iterable", purpose: "Marketing", detail: "Email, SMS, push + lifecycle flows", color: C.blue },
-          { name: "Zendesk", purpose: "Support", detail: "Ticketing with full session context", color: C.green },
+          { name: "Zinrelo", purpose: "Loyalty rewards", detail: "Points, redemption, tier management", color: STATUS.purple },
+          { name: "Iterable", purpose: "Marketing", detail: "Email, SMS, push + lifecycle flows", color: STATUS.blue },
+          { name: "Zendesk", purpose: "Support", detail: "Ticketing with full session context", color: STATUS.green },
           { name: "ContentStack", purpose: "CMS", detail: "Headless CMS for platform content", color: C.amber },
         ].map(({ name, purpose, detail, color }) => (
           <div key={name} style={{
-            background: "#0f0f13", border: `1px solid ${C.border}`,
+            background: C.bg, border: `1px solid ${C.border}`,
             borderRadius: 8, padding: "7px 9px",
           }}>
             <p style={{ fontSize: 11, fontWeight: 700, color, margin: 0 }}>{name}</p>
@@ -315,7 +322,7 @@ function Integrations() {
         ["Idempotency keys", "Retried events never double-credit (e.g. loyalty points)"],
       ].map(([k, v]) => (
         <div key={k} style={{
-          background: "#0f0f13", border: `1px solid ${C.border}`,
+          background: C.bg, border: `1px solid ${C.border}`,
           borderRadius: 7, padding: "6px 9px", marginBottom: 4,
         }}>
           <p style={{ fontSize: 10, fontWeight: 600, color: C.amber, margin: 0 }}>{k}</p>
@@ -342,20 +349,22 @@ const PROJECTS: Record<number, {
   emoji: string; label: string; where: string; color: string; tag: string;
   Component: () => React.ReactNode;
 }> = {
-  1: { emoji: "🔍", label: "Semantic Advisor Search", where: "Ingenio / Keen", color: C.amber, tag: "RAG · Production", Component: AdvisorSearch },
-  2: { emoji: "💬", label: "Advisor Feedback Search",  where: "Ingenio / Keen", color: C.green, tag: "RAG · Production", Component: FeedbackSearch },
-  3: { emoji: "🤖", label: "This Interview Bot",       where: "Personal Project", color: C.purple, tag: "RAG · Live · $0/mo", Component: InterviewBot },
-  4: { emoji: "🔐", label: "JWT Auth Migration",       where: "Ingenio / Keen", color: C.red, tag: "Platform · Zero downtime", Component: JWTMigration },
-  5: { emoji: "🔗", label: "3rd-Party Integrations",   where: "Ingenio / Keen", color: C.blue, tag: "Platform · 4 integrations", Component: Integrations },
+  1: { emoji: "🔍", label: "Semantic Advisor Search", where: "Ingenio / Keen", color: "__accent__", tag: "RAG · Production", Component: AdvisorSearch },
+  2: { emoji: "💬", label: "Advisor Feedback Search",  where: "Ingenio / Keen", color: STATUS.green, tag: "RAG · Production", Component: FeedbackSearch },
+  3: { emoji: "🤖", label: "This Interview Bot",       where: "Personal Project", color: STATUS.purple, tag: "RAG · Live · $0/mo", Component: InterviewBot },
+  4: { emoji: "🔐", label: "JWT Auth Migration",       where: "Ingenio / Keen", color: STATUS.red, tag: "Platform · Zero downtime", Component: JWTMigration },
+  5: { emoji: "🔗", label: "3rd-Party Integrations",   where: "Ingenio / Keen", color: STATUS.blue, tag: "Platform · 4 integrations", Component: Integrations },
 };
 
 // ── Exported card ─────────────────────────────────────────────────────────────
 
 export default function ArchitectureCard({ projectId }: { projectId: number }) {
+  const C = useTheme();
   const proj = PROJECTS[projectId];
   if (!proj) return null;
 
-  const { emoji, label, where, color, tag, Component } = proj;
+  const { emoji, label, where, color: rawColor, tag, Component } = proj;
+  const color = rawColor === "__accent__" ? C.amber : rawColor;
 
   return (
     <div style={{

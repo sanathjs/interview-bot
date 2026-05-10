@@ -3,21 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getKnowledgeFiles, getKnowledgeChunks } from "@/lib/api";
-
-const C = {
-  bg:          "#0d0d0f",
-  card:        "#1c1c21",
-  cardHover:   "#23232a",
-  border:      "#32323c",
-  text:        "#e8e8ef",
-  muted:       "#6b6b7d",
-  subtle:      "#9292a4",
-  amber:       "#f59e0b",
-  amberBg:     "rgba(245,158,11,0.10)",
-  amberBorder: "rgba(245,158,11,0.28)",
-  green:       "#34d399",
-  greenBg:     "rgba(52,211,153,0.08)",
-};
+import { useTheme } from "@/components/ThemeProvider";
 
 interface KnowledgeFile {
   sourceFile: string;
@@ -39,6 +25,9 @@ interface FileDetail {
 
 // Which "Interview Angles" sections are expanded
 function ChunkCard({ chunk, idx }: { chunk: KnowledgeChunk; idx: number }) {
+  const C = useTheme();
+  const green = "#34d399";
+  const greenBg = "rgba(52,211,153,0.08)";
   const [anglesOpen, setAnglesOpen] = useState(false);
 
   return (
@@ -108,12 +97,12 @@ function ChunkCard({ chunk, idx }: { chunk: KnowledgeChunk; idx: number }) {
                 <li key={qi} style={{
                   display: "flex", alignItems: "flex-start", gap: 8,
                   fontSize: 13, color: C.subtle,
-                  background: C.greenBg,
+                  background: greenBg,
                   border: `1px solid rgba(52,211,153,0.12)`,
                   borderRadius: 8,
                   padding: "7px 12px",
                 }}>
-                  <span style={{ color: C.green, flexShrink: 0, marginTop: 1, fontSize: 11 }}>›</span>
+                  <span style={{ color: green, flexShrink: 0, marginTop: 1, fontSize: 11 }}>›</span>
                   {q}
                 </li>
               ))}
@@ -126,6 +115,8 @@ function ChunkCard({ chunk, idx }: { chunk: KnowledgeChunk; idx: number }) {
 }
 
 export default function PreparePage() {
+  const C = useTheme();
+  const cardHover = C.mode === "light" ? "#f1f5f9" : "#23232a";
   const router = useRouter();
 
   const [isAdmin,      setIsAdmin]      = useState(false);
@@ -277,7 +268,7 @@ export default function PreparePage() {
                   fontFamily: "inherit",
                   transition: "all 0.15s",
                 }}
-                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = C.cardHover; }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = cardHover; }}
                 onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
               >
                 <div style={{ fontSize: 13, fontWeight: active ? 600 : 400, lineHeight: 1.3 }}>

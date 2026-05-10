@@ -1,16 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useTheme } from "@/components/ThemeProvider";
 
-const C = {
-  bg:     "#0d0d0f",
-  card:   "#1c1c21",
-  border: "#32323c",
-  text:   "#e8e8ef",
-  muted:  "#6b6b7d",
-  subtle: "#9292a4",
-  amber:  "#f59e0b",
-  amberDim: "rgba(245,158,11,0.12)",
+// Functional status colors (not theme-dependent)
+const STATUS = {
   green:  "#34d399",
   purple: "#818cf8",
   red:    "#f87171",
@@ -20,7 +14,9 @@ const TABS = ["Overview", "RAG Pipeline", "Tech Stack", "Flow"];
 
 // ── Mini diagram components ────────────────────────────────────
 
-function Arrow({ color = C.amber }: { color?: string }) {
+function Arrow({ color }: { color?: string }) {
+  const C = useTheme();
+  color = color ?? C.amber;
   return (
     <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
       <div style={{ width: 20, height: 1, background: color, opacity: 0.5 }} />
@@ -31,7 +27,9 @@ function Arrow({ color = C.amber }: { color?: string }) {
   );
 }
 
-function DownArrow({ color = C.amber, label }: { color?: string; label?: string }) {
+function DownArrow({ color, label }: { color?: string; label?: string }) {
+  const C = useTheme();
+  color = color ?? C.amber;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, margin: "4px 0" }}>
       {label && <span style={{ fontSize: 9, color: C.muted, letterSpacing: "0.05em" }}>{label}</span>}
@@ -44,15 +42,17 @@ function DownArrow({ color = C.amber, label }: { color?: string; label?: string 
 }
 
 function Box({
-  label, sub, color = C.border, icon, accent = false,
+  label, sub, color, icon, accent = false,
 }: {
   label: string; sub?: string; color?: string; icon?: React.ReactNode; accent?: boolean;
 }) {
+  const C = useTheme();
+  color = color ?? C.border;
   return (
     <div style={{
       padding: "8px 12px", borderRadius: 10,
-      background: accent ? `${C.amberDim}` : "#141417",
-      border: `1px solid ${accent ? "rgba(245,158,11,0.3)" : color}`,
+      background: accent ? `${C.amberBg}` : C.header,
+      border: `1px solid ${accent ? C.amberBorder : color}`,
       display: "flex", alignItems: "center", gap: 8,
       minWidth: 0,
     }}>
@@ -68,6 +68,7 @@ function Box({
 // ── Tab content ────────────────────────────────────────────────
 
 function OverviewTab() {
+  const C = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <p style={{ fontSize: 13, color: C.subtle, margin: 0, lineHeight: 1.75 }}>
@@ -129,13 +130,13 @@ function OverviewTab() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         {[
           { label: "Knowledge Base", value: "13 .md files", color: C.amber },
-          { label: "Embedding Model", value: "BAAI/bge-base", color: C.green },
-          { label: "LLM", value: "llama-3.3-70b", color: C.purple },
-          { label: "Vector Dims", value: "768 dimensions", color: C.red },
+          { label: "Embedding Model", value: "BAAI/bge-base", color: STATUS.green },
+          { label: "LLM", value: "llama-3.3-70b", color: STATUS.purple },
+          { label: "Vector Dims", value: "768 dimensions", color: STATUS.red },
         ].map(({ label, value, color }) => (
           <div key={label} style={{
             padding: "10px 12px", borderRadius: 10,
-            background: "#141417", border: `1px solid ${C.border}`,
+            background: C.header, border: `1px solid ${C.border}`,
           }}>
             <p style={{ fontSize: 10, color: C.muted, margin: "0 0 3px" }}>{label}</p>
             <p style={{ fontSize: 13, fontWeight: 600, color, margin: 0 }}>{value}</p>
@@ -147,6 +148,7 @@ function OverviewTab() {
 }
 
 function RAGTab() {
+  const C = useTheme();
   const steps = [
     {
       num: "01", label: "Question Asked",
@@ -156,12 +158,12 @@ function RAGTab() {
     {
       num: "02", label: "Embed Question",
       desc: "HuggingFace BAAI/bge-base-en-v1.5 converts text → 768-dim vector",
-      color: C.purple, icon: "🔢",
+      color: STATUS.purple, icon: "🔢",
     },
     {
       num: "03", label: "Vector Search",
       desc: "pgvector cosine similarity → top 15 chunks from Knowledge Base",
-      color: C.green, icon: "🔍",
+      color: STATUS.green, icon: "🔍",
     },
     {
       num: "04", label: "Re-rank + Boost",
@@ -176,12 +178,12 @@ function RAGTab() {
     {
       num: "06", label: "LLM Generation",
       desc: "Groq llama-3.3-70b generates answer using retrieved context in Sanath's voice",
-      color: C.purple, icon: "🧠",
+      color: STATUS.purple, icon: "🧠",
     },
     {
       num: "07", label: "Saved + Streamed",
       desc: "Answer streamed word-by-word to UI and saved to PostgreSQL with confidence score",
-      color: C.green, icon: "💾",
+      color: STATUS.green, icon: "💾",
     },
   ];
 
@@ -198,7 +200,7 @@ function RAGTab() {
           <div style={{
             display: "flex", gap: 12, alignItems: "flex-start",
             padding: "10px 12px", borderRadius: 12,
-            background: "#141417", border: `1px solid ${C.border}`,
+            background: C.header, border: `1px solid ${C.border}`,
           }}>
             <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{s.icon}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -219,6 +221,7 @@ function RAGTab() {
 }
 
 function TechTab() {
+  const C = useTheme();
   const layers = [
     {
       label: "Frontend",
@@ -233,7 +236,7 @@ function TechTab() {
     },
     {
       label: "Backend",
-      color: C.purple,
+      color: STATUS.purple,
       items: [
         { name: ".NET 8 Web API", role: "C# REST API, Railway hosted" },
         { name: "ChatService.cs", role: "RAG pipeline orchestration" },
@@ -244,7 +247,7 @@ function TechTab() {
     },
     {
       label: "Data & AI",
-      color: C.green,
+      color: STATUS.green,
       items: [
         { name: "PostgreSQL 16", role: "Supabase, all session/chat data" },
         { name: "pgvector", role: "HNSW index, cosine similarity" },
@@ -270,7 +273,7 @@ function TechTab() {
               <div key={item.name} style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "8px 12px", borderRadius: 10, gap: 8,
-                background: "#141417", border: `1px solid ${C.border}`,
+                background: C.header, border: `1px solid ${C.border}`,
               }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: 0, whiteSpace: "nowrap" }}>
                   {item.name}
@@ -292,7 +295,7 @@ function TechTab() {
       }}>
         <span style={{ fontSize: 18 }}>💰</span>
         <div>
-          <p style={{ fontSize: 12, fontWeight: 600, color: C.green, margin: 0 }}>Total Cost: $0/month</p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: STATUS.green, margin: 0 }}>Total Cost: $0/month</p>
           <p style={{ fontSize: 11, color: C.muted, margin: "2px 0 0" }}>
             Vercel free · Railway free · Supabase free · Groq free · HuggingFace free
           </p>
@@ -303,6 +306,7 @@ function TechTab() {
 }
 
 function FlowTab() {
+  const C = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -321,7 +325,7 @@ function FlowTab() {
           <div style={{
             display: "flex", alignItems: "center", gap: 10,
             padding: "8px 16px", borderRadius: 10,
-            background: C.amberDim, border: "1px solid rgba(245,158,11,0.3)",
+            background: C.amberBg, border: `1px solid ${C.amberBorder}`,
           }}>
             <span style={{ fontSize: 16 }}>👤</span>
             <div>
@@ -336,7 +340,7 @@ function FlowTab() {
           <div style={{
             display: "flex", alignItems: "center", gap: 8, width: "100%",
             padding: "8px 12px", borderRadius: 10,
-            background: "#141417", border: `1px solid ${C.border}`,
+            background: C.header, border: `1px solid ${C.border}`,
           }}>
             <span style={{ fontSize: 14 }}>⚡</span>
             <div>
@@ -351,11 +355,11 @@ function FlowTab() {
           <div style={{
             display: "flex", alignItems: "center", gap: 8, width: "100%",
             padding: "8px 12px", borderRadius: 10,
-            background: "#141417", border: `1px solid rgba(129,140,248,0.3)`,
+            background: C.header, border: `1px solid rgba(129,140,248,0.3)`,
           }}>
             <span style={{ fontSize: 14 }}>🔧</span>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: C.purple, margin: 0 }}>.NET 8 ChatService</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: STATUS.purple, margin: 0 }}>.NET 8 ChatService</p>
               <p style={{ fontSize: 10, color: C.muted, margin: 0 }}>Embeds question → pgvector search → confidence check</p>
             </div>
           </div>
@@ -366,13 +370,13 @@ function FlowTab() {
             display: "flex", gap: 8, width: "100%", justifyContent: "center",
           }}>
             {[
-              { label: "HIGH ≥65%", sub: "Answers from KB", color: C.green, emoji: "✅" },
+              { label: "HIGH ≥65%", sub: "Answers from KB", color: STATUS.green, emoji: "✅" },
               { label: "MED ≥58%", sub: "Best 3 chunks", color: C.amber, emoji: "🟡" },
-              { label: "LOW <58%", sub: "Saved to Prep", color: C.red, emoji: "📝" },
+              { label: "LOW <58%", sub: "Saved to Prep", color: STATUS.red, emoji: "📝" },
             ].map(b => (
               <div key={b.label} style={{
                 flex: 1, padding: "7px 8px", borderRadius: 10, textAlign: "center",
-                background: "#141417", border: `1px solid ${b.color}33`,
+                background: C.header, border: `1px solid ${b.color}33`,
               }}>
                 <p style={{ fontSize: 13, margin: "0 0 3px" }}>{b.emoji}</p>
                 <p style={{ fontSize: 10, fontWeight: 700, color: b.color, margin: 0 }}>{b.label}</p>
@@ -387,11 +391,11 @@ function FlowTab() {
           <div style={{
             display: "flex", alignItems: "center", gap: 8, width: "100%",
             padding: "8px 12px", borderRadius: 10,
-            background: "#141417", border: `1px solid rgba(129,140,248,0.3)`,
+            background: C.header, border: `1px solid rgba(129,140,248,0.3)`,
           }}>
             <span style={{ fontSize: 14 }}>🧠</span>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: C.purple, margin: 0 }}>Groq llama-3.3-70b</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: STATUS.purple, margin: 0 }}>Groq llama-3.3-70b</p>
               <p style={{ fontSize: 10, color: C.muted, margin: 0 }}>Generates answer using Sanath's KB context + conversation history</p>
             </div>
           </div>
@@ -406,7 +410,7 @@ function FlowTab() {
           }}>
             <span style={{ fontSize: 16 }}>💬</span>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: C.green, margin: 0 }}>Answer Displayed</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: STATUS.green, margin: 0 }}>Answer Displayed</p>
               <p style={{ fontSize: 10, color: C.muted, margin: 0 }}>With confidence %, source attribution, follow-up suggestions</p>
             </div>
           </div>
@@ -416,7 +420,7 @@ function FlowTab() {
       {/* KB workflow */}
       <div style={{
         padding: "12px 14px", borderRadius: 12,
-        background: "#141417", border: `1px solid ${C.border}`,
+        background: C.header, border: `1px solid ${C.border}`,
       }}>
         <p style={{ fontSize: 11, fontWeight: 600, color: C.text, margin: "0 0 10px" }}>
           🔄 Knowledge Base Improvement Loop
@@ -448,6 +452,7 @@ function FlowTab() {
 // ── Main component ─────────────────────────────────────────────
 
 export default function ProjectExplainer() {
+  const C = useTheme();
   const [open, setOpen]       = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [hovered, setHovered] = useState(false);
@@ -481,11 +486,11 @@ export default function ProjectExplainer() {
           cursor: "pointer",
           background: hovered
             ? "linear-gradient(135deg, #f59e0b, #d97706)"
-            : "rgba(245,158,11,0.15)",
+            : C.amberBg,
           boxShadow: hovered
-            ? "0 0 20px rgba(245,158,11,0.5)"
-            : "0 0 12px rgba(245,158,11,0.2)",
-          border: `1px solid rgba(245,158,11,${hovered ? "0.6" : "0.3"})`,
+            ? `0 0 20px ${C.amberGlow}`
+            : `0 0 12px ${C.amberGlow}`,
+          border: `1px solid ${C.amberBorder}`,
           display: "flex", alignItems: "center", justifyContent: "center",
           transition: "all 0.2s",
           animation: "floatBob 3s ease-in-out infinite",
@@ -535,7 +540,7 @@ export default function ProjectExplainer() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{
                   width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-                  background: C.amberDim, border: "1px solid rgba(245,158,11,0.25)",
+                  background: C.amberBg, border: `1px solid ${C.amberBorder}`,
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
                   <span style={{ fontSize: 16 }}>🤖</span>
@@ -568,9 +573,9 @@ export default function ProjectExplainer() {
                   padding: "6px 14px", borderRadius: 99, border: "none",
                   cursor: "pointer", fontSize: 12, fontWeight: 500,
                   fontFamily: "inherit", whiteSpace: "nowrap",
-                  background: activeTab === i ? "rgba(245,158,11,0.15)" : "transparent",
+                  background: activeTab === i ? C.amberBg : "transparent",
                   color: activeTab === i ? C.amber : C.muted,
-                  outline: activeTab === i ? "1px solid rgba(245,158,11,0.3)" : "none",
+                  outline: activeTab === i ? `1px solid ${C.amberBorder}` : "none",
                   transition: "all 0.15s",
                 }}>{tab}</button>
               ))}

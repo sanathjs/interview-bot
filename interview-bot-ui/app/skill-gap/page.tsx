@@ -1,27 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTheme } from "@/components/ThemeProvider";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5267";
-
-// ── Design tokens ────────────────────────────────────────────────
-const C = {
-  bg:        "#0a0a0f",
-  surface:   "#111118",
-  card:      "#16161f",
-  input:     "#0d0d12",
-  border:    "#22222e",
-  borderHov: "#3a3a52",
-  text:      "#e8e8f0",
-  muted:     "#7878a0",
-  dim:       "#3a3a52",
-  indigo:    "#6366f1",
-  emerald:   "#34d399",
-  amber:     "#f59e0b",
-  red:       "#f87171",
-  sky:       "#38bdf8",
-  violet:    "#a78bfa",
-};
 
 // ── Types ────────────────────────────────────────────────────────
 interface JobListing {
@@ -61,10 +43,10 @@ interface SkillGapResponse {
 const fmt = (n: number) =>
   n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${n.toLocaleString("en-IN")}`;
 
-const matchStyle = (score: number) => {
-  if (score >= 75) return { color: C.emerald, bg: "rgba(52,211,153,0.1)",  border: "rgba(52,211,153,0.2)"  };
-  if (score >= 50) return { color: C.amber,   bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.2)" };
-  return               { color: C.red,     bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.2)" };
+const matchStyle = (score: number, accent: string) => {
+  if (score >= 75) return { color: "#34d399", bg: "rgba(52,211,153,0.1)",  border: "rgba(52,211,153,0.2)"  };
+  if (score >= 50) return { color: accent,    bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.2)" };
+  return               { color: "#f87171",  bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.2)" };
 };
 
 // ── SVG Icons ────────────────────────────────────────────────────
@@ -82,18 +64,19 @@ const IconTrend    = () => <svg width="13" height="13" viewBox="0 0 24 24" fill=
 const IconAlert    = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
 const IconZap      = ({ size = 16 }: { size?: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const IconWifi     = () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12.55a11 11 0 0114.08 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M1.42 9a16 16 0 0121.16 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M8.53 16.11a6 6 0 016.95 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>;
-const IconToggleOn  = () => <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="1" y="7" width="22" height="10" rx="5" stroke={C.emerald} strokeWidth="2"/><circle cx="16" cy="12" r="3" fill={C.emerald}/></svg>;
-const IconToggleOff = () => <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="1" y="7" width="22" height="10" rx="5" stroke={C.dim} strokeWidth="2"/><circle cx="8" cy="12" r="3" fill={C.dim}/></svg>;
+const IconToggleOn  = ({ color = "#34d399" }: { color?: string }) => <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="1" y="7" width="22" height="10" rx="5" stroke={color} strokeWidth="2"/><circle cx="16" cy="12" r="3" fill={color}/></svg>;
+const IconToggleOff = ({ color = "#3a3a52" }: { color?: string }) => <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="1" y="7" width="22" height="10" rx="5" stroke={color} strokeWidth="2"/><circle cx="8" cy="12" r="3" fill={color}/></svg>;
 
 // ── Skill Pill ───────────────────────────────────────────────────
-const pillStyles = {
-  matched:  { color: C.emerald, bg: "rgba(52,211,153,0.1)",  border: "rgba(52,211,153,0.2)"  },
-  missing:  { color: C.red,     bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.2)" },
-  trending: { color: C.amber,   bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.2)"  },
-  yours:    { color: C.indigo,  bg: "rgba(99,102,241,0.1)",  border: "rgba(99,102,241,0.2)"  },
+const PILL_STYLES = {
+  matched:  { color: "#34d399", bg: "rgba(52,211,153,0.1)",  border: "rgba(52,211,153,0.2)"  },
+  missing:  { color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.2)" },
+  trending: { color: "#f59e0b", bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.2)"  },
+  yours:    { color: "#6366f1", bg: "rgba(99,102,241,0.1)",  border: "rgba(99,102,241,0.2)"  },
 };
-function SkillPill({ label, type }: { label: string; type: keyof typeof pillStyles }) {
-  const s = pillStyles[type];
+type PillType = keyof typeof PILL_STYLES;
+function SkillPill({ label, type }: { label: string; type: PillType }) {
+  const s = PILL_STYLES[type];
   return (
     <span style={{
       fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 20,
@@ -104,10 +87,12 @@ function SkillPill({ label, type }: { label: string; type: keyof typeof pillStyl
 
 // ── Job Card ─────────────────────────────────────────────────────
 function JobCard({ job, onSave }: { job: JobListing; onSave: (id: number) => void }) {
+  const _t = useTheme();
+  const C = { ..._t, surface: _t.header, borderHov: _t.subtle, dim: _t.muted, indigo: "#6366f1", emerald: "#34d399", red: "#f87171", sky: "#38bdf8", violet: "#a78bfa" };
   const [expanded, setExpanded] = useState(false);
   const [saved,    setSaved]    = useState(false);
   const [hovered,  setHovered]  = useState(false);
-  const ms = matchStyle(job.matchScore);
+  const ms = matchStyle(job.matchScore, C.amber);
 
   return (
     <div
@@ -229,6 +214,19 @@ function JobCard({ job, onSave }: { job: JobListing; onSave: (id: number) => voi
 
 // ── Main Page ────────────────────────────────────────────────────
 export default function SkillGapPage() {
+  const _t = useTheme();
+  // Map theme to skill-gap design tokens (keeps functional colors local)
+  const C = {
+    ..._t,
+    surface:   _t.header,
+    borderHov: _t.subtle,
+    dim:       _t.muted,
+    indigo:    "#6366f1",
+    emerald:   "#34d399",
+    red:       "#f87171",
+    sky:       "#38bdf8",
+    violet:    "#a78bfa",
+  };
   const [data,        setData]        = useState<SkillGapResponse | null>(null);
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState<string | null>(null);

@@ -2,17 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getUnanswered, saveAnswer, promoteToKb, deleteUnanswered } from "@/lib/api";
-
-const C = {
-  bg:     "#0d0d0f",
-  card:   "#1c1c21",
-  border: "#32323c",
-  text:   "#e8e8ef",
-  muted:  "#6b6b7d",
-  subtle: "#9292a4",
-  amber:  "#f59e0b",
-  input:  "#141417",
-};
+import { useTheme } from "@/components/ThemeProvider";
 
 interface UnansweredQuestion {
   id: number;
@@ -41,6 +31,7 @@ const statusStyle: Record<string, { bg: string; border: string; color: string }>
 };
 
 export default function PrepPage() {
+  const C = useTheme();
   const [unlocked, setUnlocked]   = useState(false);
   const [pin, setPin]             = useState("");
   const [pinError, setPinError]   = useState(false);
