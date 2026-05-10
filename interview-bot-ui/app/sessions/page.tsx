@@ -26,9 +26,9 @@ function formatDate(iso: string) {
 }
 
 function formatDuration(start: string, end: string | null) {
-  if (!end) return "Ongoing";
-  const mins = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000);
-  return `${mins}m`;
+  const endTime = end ? new Date(end).getTime() : new Date(start).getTime();
+  const mins = Math.round((endTime - new Date(start).getTime()) / 60000);
+  return mins < 1 ? "<1m" : `${mins}m`;
 }
 
 const confColor = (score: number) =>
@@ -39,7 +39,7 @@ export default function SessionsPage() {
   const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading]   = useState(true);
-  const [filter, setFilter]     = useState<"all" | "active" | "completed">("all");
+  const [sortBy, setSortBy]     = useState<"recent" | "questions" | "confidence">("recent");
 
   useEffect(() => {
     (async () => {
@@ -52,7 +52,11 @@ export default function SessionsPage() {
     })();
   }, []);
 
-  const filtered = sessions.filter(s => filter === "all" ? true : s.status === filter);
+  const filtered = [...sessions].sort((a, b) => {
+    if (sortBy === "questions")  return b.totalQuestions - a.totalQuestions;
+    if (sortBy === "confidence") return (b.avgConfidenceScore ?? 0) - (a.avgConfidenceScore ?? 0);
+    return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+  });
 
   const avgConf = (() => {
     const scored = sessions.filter(s => s.avgConfidenceScore != null);
@@ -106,7 +110,7 @@ export default function SessionsPage() {
         {!loading && sessions.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
             {[
-              { label: "Total Sessions",   value: sessions.length,                             sub: `${sessions.filter(s => s.status === "active").length} active` },
+              { label: "Total Sessions",   value: sessions.length,                             sub: `${sessions.reduce((a, s) => a + s.answeredFromKb, 0)} answered from KB` },
               { label: "Avg KB Match",     value: avgConf ? `${Math.round(avgConf * 100)}%` : "—", sub: "across all sessions", valueColor: avgConf ? confColor(avgConf) : undefined },
               { label: "Questions Asked",  value: sessions.reduce((a, s) => a + s.totalQuestions, 0), sub: `${sessions.reduce((a, s) => a + s.unansweredCount, 0)} unanswered` },
             ].map(({ label, value, sub, valueColor }: any) => (
@@ -122,17 +126,22 @@ export default function SessionsPage() {
           </div>
         )}
 
-        {/* Filter tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {(["all", "active", "completed"] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{
+        {/* Sort tabs */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: C.muted, marginRight: 4 }}>Sort by</span>
+          {([
+            { key: "recent", label: "Recent" },
+            { key: "questions", label: "Most Questions" },
+            { key: "confidence", label: "Confidence" },
+          ] as const).map(({ key, label }) => (
+            <button key={key} onClick={() => setSortBy(key)} style={{
               padding: "6px 16px", borderRadius: 99, fontSize: 12, fontWeight: 500,
-              cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize",
-              background: filter === f ? "rgba(245,158,11,0.12)" : C.input,
-              border: `1px solid ${filter === f ? "rgba(245,158,11,0.3)" : C.border}`,
-              color: filter === f ? C.amber : C.muted,
+              cursor: "pointer", fontFamily: "inherit",
+              background: sortBy === key ? C.amberBg : C.input,
+              border: `1px solid ${sortBy === key ? C.amberBorder : C.border}`,
+              color: sortBy === key ? C.amber : C.muted,
               transition: "all 0.15s",
-            }}>{f}</button>
+            }}>{label}</button>
           ))}
         </div>
 
@@ -173,10 +182,10 @@ export default function SessionsPage() {
                       )}
                       <span style={{
                         fontSize: 11, padding: "2px 8px", borderRadius: 99,
-                        background: s.status === "active" ? "rgba(52,211,153,0.1)" : "rgba(100,100,120,0.12)",
-                        border: `1px solid ${s.status === "active" ? "rgba(52,211,153,0.2)" : C.border}`,
-                        color: s.status === "active" ? "#34d399" : C.muted,
-                      }}>{s.status}</span>
+                        background: "rgba(100,100,120,0.12)",
+                        border: `1px solid ${C.border}`,
+                        color: C.muted,
+                      }}>{formatDuration(s.startedAt, s.endedAt)}</span>
                     </div>
 
                     {/* Meta row */}
