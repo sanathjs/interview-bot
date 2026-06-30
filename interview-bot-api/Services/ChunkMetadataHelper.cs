@@ -25,13 +25,23 @@ public static class ChunkMetadataHelper
     };
 
     /// <summary>
-    /// Files that should NEVER be returned by the search engine.
-    /// answering-guidelines.md is internal instructions, not interview answers.
+    /// Files skipped during ingestion and never returned by the search engine.
+    ///   - answering-guidelines: internal instructions, not interview answers.
+    ///   - dotnet-interview-prep-v2 / dotnet-interview-qa: superseded by
+    ///     dotnet-interview-prep.md (merged + deduplicated). Kept on disk for
+    ///     reference but excluded from re-ingestion.
     /// </summary>
+    private static readonly string[] ExcludedFilePatterns =
+    {
+        "answering-guidelines",
+        "dotnet-interview-prep-v2",
+        "dotnet-interview-qa",
+    };
+
     public static bool IsExcludedFromSearch(string sourceFile)
     {
         var f = sourceFile.ToLower();
-        return f.Contains("answering-guidelines");
+        return ExcludedFilePatterns.Any(p => f.Contains(p));
     }
 
     public static string ExtractTopic(string sourceFile)
