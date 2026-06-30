@@ -26,6 +26,8 @@ public static class ChunkMetadataHelper
 
     /// <summary>
     /// Files skipped during ingestion and never returned by the search engine.
+    ///   - Any filename starting with '_' (e.g. _STYLE.md, _DRAFT.md) is treated
+    ///     as authoring metadata and excluded automatically.
     ///   - answering-guidelines: internal instructions, not interview answers.
     ///   - dotnet-interview-prep-v2 / dotnet-interview-qa: superseded by
     ///     dotnet-interview-prep.md (merged + deduplicated). Kept on disk for
@@ -40,6 +42,9 @@ public static class ChunkMetadataHelper
 
     public static bool IsExcludedFromSearch(string sourceFile)
     {
+        var fileName = Path.GetFileName(sourceFile);
+        if (fileName.StartsWith("_", StringComparison.Ordinal)) return true;
+
         var f = sourceFile.ToLower();
         return ExcludedFilePatterns.Any(p => f.Contains(p));
     }

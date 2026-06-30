@@ -1,219 +1,249 @@
-## When Asked About Recent Projects — Quick Overview
-If asked "tell me about your recent projects" or "what have you been working on lately" or
-"walk me through your recent work", always give this numbered menu first and then ask which
-project to go deeper on. Do not dive into detail on one project without offering the menu.
+# Recent Projects — Keen Platform (Ingenio) and Beyond
 
-1. Semantic Advisor Search (Ingenio / Keen) — production RAG pipeline, semantic search over
-   thousands of advisor profiles, results in 300–800ms, built in C# / .NET 8 on Azure.
+## Recent Projects — Quick Overview Menu
 
-2. Advisor Feedback Search (Ingenio / Keen) — production RAG pipeline, semantic search over
-   100,000+ advisor reviews per advisor profile, incremental ingestion, pure retrieval with
-   no LLM generation step, built in C# / .NET 8 on Azure.
+> If asked **"tell me about your recent projects"** or any variant, give the numbered menu **first** and then ask which project to go deeper on. Do not dive into one project without offering the menu.
 
-3. This Interview Bot (Personal Project, outside work) — AI-powered interview assistant
-   representing me in technical interviews, full RAG pipeline, Next.js + .NET 8 + pgvector
-   + Groq, runs entirely on free tiers, built outside of work hours.
+**The five projects I lead with**
 
-4. JWT Authentication Migration (Ingenio / Keen) — platform-wide migration from session-based
-   auth to JWT, zero downtime, dual-token validation during transition, all clients and APIs.
+1. **Semantic Advisor Search (Ingenio / Keen)** — production RAG pipeline; semantic search over thousands of advisor profiles; results in 300–800 ms; built in C# / .NET 8 on Azure.
+2. **Advisor Feedback Search (Ingenio / Keen)** — production RAG pipeline; semantic search over **100,000+ reviews** per advisor profile; incremental ingestion; pure retrieval with no LLM generation step; built in C# / .NET 8 on Azure.
+3. **This Interview Bot** *(personal project, outside work)* — AI-powered interview assistant representing me; full RAG pipeline; Next.js + .NET 8 + pgvector + Groq; runs entirely on free tiers.
+4. **JWT Authentication Migration (Ingenio / Keen)** — platform-wide migration from session-based auth to JWT; zero downtime; dual-token validation during transition; all clients and APIs.
+5. **Third-Party Integrations & Platform Features (Ingenio / Keen)** — Zinrelo loyalty, Iterable marketing, Zendesk support, Contentstack CMS, A/B tests, and smaller platform features.
 
-5. Third-Party Integrations and Platform Features (Ingenio / Keen) — Zinrelo loyalty rewards,
-   Iterable marketing campaigns, Zendesk customer support, ContentStack CMS, A/B tests and
-   smaller platform features.
+> After listing these, ask: **"Which one would you like me to go deeper on? Just say the number or the project name."**
 
-After listing these, ask: "Which one would you like me to go deeper on? Just say the number
-or the project name."
+## Recent Projects — What Keen Is (The Product)
 
----
+> Two-sided marketplace connecting users with psychics, tarot readers, and astrologers for paid online consultations. High-availability — any downtime hits live paid sessions.
 
-# Recent Project — Keen Platform (Ingenio)
+**Product shape**
 
-## What Keen Is — The Product
-Keen is a consumer marketplace that connects users with psychics, tarot card readers,
-astrologers, and spiritual advisors for online chat or phone consultations. It is an
-e-commerce style platform with real-time advisor matching, session management, billing,
-loyalty rewards, and marketing automation at scale. Think of it as a two-sided marketplace
-— users on one side, advisors on the other — with high availability requirements because
-any downtime directly impacts live paid sessions.
+- **Keen** is a consumer marketplace connecting users with **psychics, tarot card readers, astrologers, and spiritual advisors** for online chat or phone consultations.
+- E-commerce style platform with **real-time advisor matching**, session management, billing, **loyalty rewards**, and marketing automation at scale.
+- Two-sided marketplace — users on one side, advisors on the other — with **high availability requirements** because any downtime directly impacts live paid sessions.
 
-I have been at Ingenio working on Keen since 2020 — that is 6+ years as of now. I joined
-as a senior engineer and grew into the Lead Software Engineer role leading a cross-functional
-team of 20+ including designers, product managers, QE, and developers.
+**My time on Keen**
 
----
+> At Ingenio since 2020 — **6+ years**. Joined as senior engineer, grew into **Lead Software Engineer** leading a cross-functional team of **20+** (designers, PMs, QE, developers).
 
-## My Role at Ingenio
-My title is Lead Software Engineer. I own architecture decisions, lead the engineering team,
-mentor junior developers, and am hands-on across both frontend and backend. I work across
-the full stack — .NET / C# on the backend, React and Next.js on the frontend, PostgreSQL
-and SQL Server for data, and Microsoft Azure for cloud infrastructure. The platform uses
-TeamCity and Azure DevOps for CI/CD, GitHub for source control, Splunk for centralized
-logging, and Mixpanel for event tracking.
+## Recent Projects — My Role at Ingenio
 
----
+> **Lead Software Engineer.** Hands-on across backend and frontend, owning architecture decisions and mentoring the team.
 
-## Project 1 — Semantic Advisor Search (AI/RAG System)
-This is the first AI project I built at Ingenio. I designed and implemented a production-grade
-semantic search system that helps users find the right advisor on the Keen platform.
+**What I own**
 
-The problem was that users search with emotionally vague queries like "I need guidance
-about my relationship falling apart" — keyword search fails completely here. My solution
-is a RAG pipeline that combines vector similarity search over pre-computed advisor
-embeddings with a 7-factor attribute scoring engine, returning ranked results in 300–800ms.
+- **Architecture decisions** across the platform.
+- **Engineering team leadership** — code reviews, design sessions, mentorship of junior developers.
+- **Hands-on across the full stack** — backend, frontend, infrastructure.
 
-This is NOT a chatbot. It is a search and ranking system. The AI components are:
-Azure OpenAI text-embedding-3-small for generating advisor and query embeddings,
-PostgreSQL with pgvector for vector similarity search using HNSW indexes, and
-Azure OpenAI gpt-4.1-nano for generating lazy per-advisor match summaries.
-The non-AI component is a pure-logic attribute scoring engine covering keywords,
-categories, communication style, methods, satisfaction, experience, and empathy.
-Final ranking blends semantic score (40%) with attribute score (60%).
-I built this entirely in C# / .NET 8. It is live in production on Azure.
+**The stack I work in daily**
 
-**The biggest challenge on Advisor Search — multi-embedding design and latency:**
-A single embedding per advisor profile was not nuanced enough. A query about "tarot love
-reading" needs to match keyword relevance, domain expertise, and overall profile meaning
-as separate signals. I solved this by pre-computing 6 separate embedding columns per
-advisor and querying 3 simultaneously at search time with weighted scoring (50/30/20).
-The second challenge was latency: generating AI match summaries for all 20 results upfront
-would add 4 seconds of wait time. I decoupled summary generation into a lazy endpoint
-called per-advisor as the user scrolls, keeping main search at 300–800ms while summaries
-load progressively.
+- **Backend:** .NET / C# (Web API, microservices)
+- **Frontend:** React, Next.js
+- **Data:** PostgreSQL and SQL Server
+- **Cloud:** Microsoft Azure
+- **CI/CD:** TeamCity, Azure DevOps
+- **Source control:** GitHub
+- **Observability:** Splunk (logs), Mixpanel (events)
 
----
+## Recent Projects — Semantic Advisor Search (RAG)
 
-## Project 2 — Advisor Feedback Search (AI/RAG System)
-This is my second AI project at Ingenio, applying the same RAG pipeline approach to a
-completely different problem — semantic search over advisor reviews and feedback.
+> **First AI project at Ingenio.** Production semantic search over advisor profiles. Vector similarity + 7-factor attribute scoring. Sub-second results.
 
-The problem: a popular advisor on Keen can have over 100,000 customer reviews. Showing all
-of them is useless. Sorting by date or rating still misses what the user actually wants.
-A user visiting an advisor profile has a specific intent — they want to know if this advisor
-is honest, accurate, empathetic, or good with relationship questions. A query like "show me
-feedback where customers felt the advisor was genuinely honest" or "find reviews about
-accurate career readings" is a semantic intent, not a keyword search. You cannot surface
-those reviews with a LIKE query on the word "honest."
+**The problem**
 
-My solution is a full RAG pipeline for reviews. Every review for every advisor is embedded
-using Azure OpenAI text-embedding-3-small and stored in pgvector, partitioned by advisor.
-When a user types a search query in the feedback section of an advisor profile, the query
-is embedded at search time and run as a cosine similarity search against only that
-advisor's review embeddings. The top semantically relevant reviews surface immediately.
-Out of 100,000 reviews, the user sees the 5 to 10 most relevant to exactly what they asked.
+Users search Keen with emotionally vague queries like *"I need guidance about my relationship falling apart"* — keyword search fails completely.
 
-The pipeline follows the same architecture as advisor search: pre-computed embeddings in
-PostgreSQL with pgvector, HNSW indexes for sub-second retrieval, Azure OpenAI for query
-embedding, and ranked results returned in real time. The UI shows the top 5 reviews by
-default on the advisor profile feedback section, with the semantic search activating when
-the user types a query in the search bar.
+**The solution**
 
-**The biggest challenge on Feedback Search — embedding volume and incremental ingestion:**
-With 100,000+ reviews per advisor and thousands of advisors on the platform, the total
-embedding volume is orders of magnitude larger than the advisor search system. Pre-computing
-embeddings for every review required careful batching, and incremental ingestion had to be
-built so new reviews get embedded and indexed automatically after every completed session
-without manual re-ingestion. The per-advisor partitioning had to be enforced in both the
-storage schema and the query layer so a search on advisor A's profile never touches advisor
-B's reviews. Getting the incremental pipeline right — new review comes in, gets embedded,
-gets indexed, shows up in search within seconds — was the hardest operational problem.
+A RAG pipeline that combines **vector similarity search over pre-computed advisor embeddings** with a **7-factor attribute scoring engine**, returning ranked results in **300–800 ms**.
 
----
+> This is **not a chatbot** — it is a search and ranking system.
 
-## Project 3 — JWT Authentication Migration
-I led the migration of Keen's authentication system from legacy session-based auth to
-JWT-based authentication. This was a platform-wide change touching every API endpoint,
-every client (web and mobile), and the session management layer — all done without
-downtime or breaking existing logged-in users.
+**Components**
 
-The migration required a dual-mode period where both session and JWT tokens were
-valid simultaneously, careful token refresh logic, and coordinating the rollout across
-frontend and backend teams. This is the kind of cross-cutting infrastructure change
-that touches everything and has zero tolerance for errors.
+- **Azure OpenAI `text-embedding-3-small`** — advisor and query embeddings.
+- **PostgreSQL + pgvector** — vector similarity search via **HNSW** indexes.
+- **Azure OpenAI `gpt-4.1-nano`** — lazy per-advisor match summaries.
+- **Pure-logic attribute scoring** — keywords, categories, communication style, methods, satisfaction, experience, empathy.
+- **Final ranking:** semantic score `40%` + attribute score `60%`.
 
-**The biggest challenge on JWT Migration — zero-downtime cutover with live paid sessions:**
-You cannot force all users to log out simultaneously — that kills active advisor sessions
-which are live paid interactions. I designed a dual-token validation layer where the API
-accepted both session tokens and JWTs during the migration window. New logins issued only
-JWTs while existing sessions continued on the old token format. Once the old token pool
-drained to zero through natural expiry, the session-based code path was removed. Coordinating
-this across web, mobile, and API simultaneously with feature flags and zero user-facing
-errors was the most operationally complex part of the project.
+Built entirely in **C# / .NET 8**. Live in production on Azure.
 
----
+**The biggest challenge — multi-embedding design + latency**
 
-## Project 4 — Third-Party Platform Integrations into Keen
-I integrated multiple third-party platforms into the Keen ecosystem to power loyalty,
-marketing, and support capabilities. These are integrations into the Keen platform —
-not Azure integrations. Azure is the cloud infrastructure we run on; these are business
-capability integrations built on top of it.
+A single embedding per advisor profile wasn't nuanced enough. A query about *"tarot love reading"* needs to match **keyword relevance**, **domain expertise**, and **overall profile meaning** as **separate signals**.
 
-Zinrelo for loyalty rewards — integrated their API to power Keen's advisor and user
-loyalty program, handling points accrual, redemption, and tier management.
+My solution:
 
-Iterable for marketing campaigns — integrated their platform to power email, SMS,
-and push notification campaigns triggered by user behaviour on Keen, including
-lifecycle automation and re-engagement flows.
+- **Pre-computed 6 separate embedding columns** per advisor.
+- **Queried 3 simultaneously** at search time with weighted scoring (`50/30/20`).
 
-Zendesk for customer support — integrated their ticketing system so user support
-requests from Keen flow into Zendesk with full context attached.
+**Latency challenge** — generating AI match summaries for all 20 results upfront would add 4 seconds.
 
-ContentStack as CMS — integrated their headless CMS to power content management
-across the Keen platform.
+- **Decoupled summary generation** into a lazy endpoint called per-advisor as the user scrolls.
+- Main search stayed at **300–800 ms** while summaries load progressively.
 
-**The biggest challenge on Third-Party Integrations — failure isolation and idempotency:**
-The core engineering challenge was ensuring that a failure in any one external platform
-never cascades into the Keen experience. A Zendesk outage must not affect a live advisor
-session. An Iterable timeout must not block a booking. I implemented circuit breakers
-around every third-party call with timeout thresholds, failure counters, and fallback
-behaviour — when a circuit opens the platform queues the event for retry rather than
-propagating the error upstream. Getting idempotency right across four different API
-contracts was the hardest part: a loyalty points event retried three times must not
-credit the user three times. Each integration needed its own idempotency key strategy.
+## Recent Projects — Advisor Feedback Search (RAG)
 
----
+> **Second AI project at Ingenio.** Same RAG approach, completely different problem: semantic search over **100,000+ reviews** per advisor.
 
-## What I Built Outside My Job — This Interview Bot
-Outside of my work at Ingenio, I built this interview bot you are currently talking to.
-It is a personal RAG project I created to represent myself in technical interviews.
-It uses a knowledge base of markdown files about my experience, a .NET 8 API with
-a RAG pipeline, PostgreSQL with pgvector on Supabase, HuggingFace embeddings, and
-Groq llama-3.3-70b for generation. The entire stack runs for free on free tiers.
-I built it to demonstrate applied AI engineering — not just knowledge of the concepts
-but actually shipping a working system end to end.
+**The problem**
 
----
+A popular advisor on Keen can have **over 100,000 customer reviews**. Showing all of them is useless. Sorting by date or rating still misses what the user actually wants.
 
-## What I Am Most Proud Of at Ingenio
-Two things. First, growing into the Lead Software Engineer role and building a team
-culture where engineers own their work end to end. Second, the two AI search systems —
-advisor search and feedback search — both are live in production handling real user
-traffic, both built entirely by me, and both solve problems that keyword search simply
-cannot. Seeing the circuit breaker hold during a third-party outage without any user
-noticing is the other moment that stands out.
+> Queries like *"show me feedback where customers felt the advisor was genuinely honest"* or *"find reviews about accurate career readings"* are **semantic intent**, not keyword search. A `LIKE '%honest%'` query cannot surface them.
 
----
+**The solution**
 
-## What I Would Do Differently
-I would introduce automated integration testing for third-party services earlier.
-When you have four external platforms all integrated into one system, testing them
-against mocked APIs from day one saves enormous debugging time later. I would also
-invest in better observability tooling earlier — specifically distributed tracing
-across the third-party calls and embedding pipeline stages — so when something breaks
-at 2am you know exactly which integration and which step failed.
+A full RAG pipeline for reviews:
 
----
+- Every review embedded using **Azure OpenAI `text-embedding-3-small`**.
+- Stored in **pgvector**, **partitioned by advisor**.
+- User query is embedded at search time → **cosine similarity** against only that advisor's review embeddings.
+- Top semantically relevant reviews surface immediately.
 
-## The Keen Tech Stack
-Backend: .NET / .NET Core, C#, Web API, REST APIs
-Frontend: React, Next.js, TypeScript
-Database: SQL Server, PostgreSQL
-Cloud: Microsoft Azure
-CI/CD: TeamCity, Azure DevOps
-Source Control: GitHub
-Logging: Splunk (centralized logging across all services)
-Analytics: Mixpanel (event tracking and user behaviour)
-Support: Zendesk
-Loyalty: Zinrelo
-Marketing: Iterable
-CMS: ContentStack
-AI: Azure OpenAI (text-embedding-3-small, gpt-4.1-nano), pgvector
+> Out of 100,000 reviews, the user sees the **5–10 most relevant** to exactly what they asked.
+
+**Architecture parallels with Advisor Search**
+
+- Pre-computed embeddings in PostgreSQL + pgvector.
+- HNSW indexes for sub-second retrieval.
+- Azure OpenAI for query embedding.
+- Ranked results in real time.
+- **Pure retrieval — no LLM generation step.**
+
+**The biggest challenge — embedding volume + incremental ingestion**
+
+- 100,000+ reviews per advisor × thousands of advisors = embedding volume **orders of magnitude larger** than Advisor Search.
+- **Pre-computing required careful batching.**
+- **Incremental ingestion** had to be built so new reviews get embedded and indexed automatically after every completed session — no manual re-ingest.
+- **Per-advisor partitioning** enforced in both storage schema and query layer so a search on advisor A never touches advisor B.
+
+> Getting the incremental pipeline right — new review comes in → gets embedded → gets indexed → shows up in search **within seconds** — was the hardest operational problem.
+
+## Recent Projects — JWT Authentication Migration
+
+> **Platform-wide auth migration.** Session-based → JWT. Zero downtime. Dual-token validation during transition. Touched every API endpoint and every client.
+
+**Scope**
+
+Migrated Keen's authentication system from legacy session-based auth to JWT-based authentication. Cross-cutting infrastructure change with **zero tolerance for errors**.
+
+- **Every API endpoint** updated.
+- **Every client** (web and mobile) coordinated.
+- **Session management layer** rewritten.
+- **No downtime** and **no broken sessions** for existing logged-in users.
+
+**The biggest challenge — zero-downtime cutover with live paid sessions**
+
+> You cannot force all users to log out simultaneously — that kills active advisor sessions, which are **live paid interactions**.
+
+**How I designed the cutover**
+
+- **Dual-token validation layer** — API accepted both session tokens and JWTs during the migration window.
+- **New logins issued JWTs only.**
+- **Existing sessions continued** on the old token format.
+- Once the old token pool **drained to zero** through natural expiry, the session-based code path was removed.
+
+Coordinating this across **web, mobile, and API simultaneously** with feature flags and zero user-facing errors was the most operationally complex part of the project.
+
+## Recent Projects — Third-Party Platform Integrations
+
+> **Four external platforms wired into Keen** — Zinrelo, Iterable, Zendesk, Contentstack. Failure isolation + idempotency were the hard problems.
+
+**The integrations**
+
+- **Zinrelo — loyalty rewards.** Powers Keen's advisor and user loyalty program: points accrual, redemption, tier management.
+- **Iterable — marketing campaigns.** Email, SMS, push notifications triggered by user behaviour on Keen; lifecycle automation and re-engagement flows.
+- **Zendesk — customer support.** User support requests from Keen flow into Zendesk with full context attached.
+- **Contentstack — headless CMS.** Powers content management across the Keen platform.
+
+> These are **business capability integrations on top of Keen** — not Azure integrations. Azure is the cloud we run on; these are vendor APIs we orchestrate.
+
+**The biggest challenge — failure isolation and idempotency**
+
+> A failure in any one external platform **must not cascade** into the Keen experience. A Zendesk outage must not affect a live advisor session. An Iterable timeout must not block a booking.
+
+**How I solved it**
+
+- **Circuit breakers** around every third-party call — timeout thresholds, failure counters, fallback behaviour.
+- When a circuit opens, the platform **queues the event for retry** instead of propagating the error upstream.
+- **Idempotency keys** per integration — a loyalty points event retried three times must not credit the user three times. Each integration needed its own idempotency strategy.
+
+## Recent Projects — Interview Bot (Personal Project)
+
+> **What I built outside of my day job.** This very assistant you're talking to.
+
+**What it is**
+
+This interview bot is a **personal RAG project** I created to represent myself in technical interviews.
+
+**Architecture**
+
+- **Knowledge base** — markdown files about my experience.
+- **Backend:** .NET 8 Web API with a full RAG pipeline.
+- **Database:** PostgreSQL + pgvector on Supabase (with Neon failover).
+- **Embeddings:** HuggingFace `BAAI/bge-base-en-v1.5` (768d).
+- **LLM:** Groq `llama-3.3-70b-versatile` for chat; Groq Whisper for STT.
+- **Frontend:** Next.js 14, deployed to Vercel.
+
+> The entire stack runs **for free on free tiers**.
+
+**Why I built it**
+
+To demonstrate **applied AI engineering** — not just knowledge of the concepts, but actually **shipping a working system end-to-end**, including graceful degradation when the primary database is paused (auto-failover to Neon).
+
+## Recent Projects — What I Am Most Proud Of at Ingenio
+
+> **Two things.** The team I built, and the AI search systems I shipped.
+
+**1. Growing into the Lead Software Engineer role**
+
+- Built a team culture where engineers **own their work end-to-end**.
+- Mentored junior developers from "needs review on every PR" to "owns an entire feature".
+
+**2. The two AI search systems**
+
+- **Advisor search** — live in production, real user traffic, built entirely by me.
+- **Feedback search** — same.
+- Both solve problems that **keyword search simply cannot**.
+
+> The other moment that stands out: seeing the **circuit breaker hold during a third-party outage** without any user noticing.
+
+## Recent Projects — What I Would Do Differently
+
+> Two things I would change if I were starting over.
+
+**1. Automated integration testing for third-party services from day one**
+
+- When you have **four external platforms** all integrated into one system, testing them against mocked APIs from day one saves enormous debugging time later.
+- I would invest in this **before** the first integration goes live, not after the third one breaks in production.
+
+**2. Better observability tooling earlier**
+
+- Specifically **distributed tracing across third-party calls and embedding pipeline stages**.
+- When something breaks at 2 am you need to know **exactly which integration** and **which step** failed — not "something in the pipeline is slow".
+- OpenTelemetry would have been the right investment from day one.
+
+## Recent Projects — The Keen Tech Stack
+
+> One-glance reference for every technology in the Keen platform.
+
+| Layer | Technology |
+|---|---|
+| Backend | .NET / .NET Core, C#, Web API, REST APIs |
+| Frontend | React, Next.js, TypeScript |
+| Database | SQL Server, PostgreSQL |
+| Cloud | Microsoft Azure |
+| CI/CD | TeamCity, Azure DevOps |
+| Source control | GitHub |
+| Logging | **Splunk** — centralised across all services |
+| Analytics | **Mixpanel** — event tracking and user behaviour |
+| Support | Zendesk |
+| Loyalty | Zinrelo |
+| Marketing | Iterable |
+| CMS | Contentstack |
+| AI | Azure OpenAI (`text-embedding-3-small`, `gpt-4.1-nano`), pgvector |

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Message } from "@/types";
 import ArchitectureCard from "@/components/chat/ArchitectureCard";
 import { useTheme } from "@/components/ThemeProvider";
+import MarkdownBody from "@/components/MarkdownBody";
 
 function RenderText({ text, streaming }: { text: string; streaming?: boolean }) {
   const C = useTheme();
@@ -296,7 +297,9 @@ export default function MessageBubble({
         }}>
           {isArchitecture && message.architectureProject
             ? <ArchitectureCard projectId={message.architectureProject} />
-            : <RenderText text={message.text} streaming={streaming} />
+            : (isBot && !streaming
+                ? <MarkdownBody content={message.text} />
+                : <RenderText text={message.text} streaming={streaming} />)
           }
 
           {/* Action bar */}

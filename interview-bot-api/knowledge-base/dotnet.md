@@ -1,53 +1,78 @@
 # .NET Experience
 
-## How Long & What Versions
-I have been working with .NET for 12+ years.
-Started with .NET Framework in early career (2012), progressed through .NET Core, and now work with modern .NET versions.
-I am a Microsoft Certified Solutions Developer.
+## .NET Experience — How Long and What Versions
 
-## What I Build With .NET
-- REST APIs using ASP.NET Core Web API
-- Background services using Worker Services / Hosted Services
-- Microservices architecture
-- Full-stack applications combining .NET backend with React/Next.js frontend
+> **12+ years working with .NET.**
 
-## My Strongest .NET Areas
-- Web API design and best practices
-- Entity Framework Core (code first, migrations, query optimization)
-- Dependency Injection and clean architecture
-- Middleware and filters
-- Performance optimization (async/await, caching, profiling)
-- SQL Server integration and query optimization
+- **Started** with .NET Framework in early career (2012).
+- **Progressed** through .NET Core (2.x, 3.x).
+- **Now working with** modern .NET (.NET 6, 7, 8).
+- **Certification:** Microsoft Certified Solutions Developer.
 
-## Design Patterns I Use Regularly
-- Repository pattern
-- CQRS with MediatR
-- Factory pattern
-- Microservice architecture patterns
-- Monolithic architecture (when appropriate)
+## .NET Experience — What I Build with .NET
 
-## Key Concepts I Know Well
+**The shapes of services I ship most often.**
 
-### async/await
-I use async/await for all I/O bound operations.
-Avoid async void (except event handlers), use ConfigureAwait(false) in libraries.
+- **REST APIs** using ASP.NET Core Web API
+- **Background services** using Worker Services / Hosted Services
+- **Microservices** architecture (multiple services behind an API gateway)
+- **Full-stack applications** combining .NET backend with React / Next.js frontend
 
-### Dependency Injection
-.NET has built-in DI. I register services as Singleton, Scoped, or Transient
-depending on their lifetime. Scoped per HTTP request is most common.
+## .NET Experience — My Strongest .NET Areas
 
-### Middleware Pipeline
-Request goes through middleware in order. I have written custom middleware for
-logging, exception handling, and request correlation IDs.
+**Where I am most confident in a technical interview.**
 
-### Cloud & DevOps with .NET
-I deploy .NET applications to Microsoft Azure, and manage CI/CD pipelines
-using TeamCity and Azure DevOps. I use GitHub for source control.
+- **Web API design** and REST best practices
+- **Entity Framework Core** — code-first, migrations, query optimisation
+- **Dependency Injection** and clean architecture
+- **Middleware and filters** — custom pipelines for cross-cutting concerns
+- **Performance optimisation** — `async`/`await`, caching, profiling
+- **SQL Server** integration and query optimisation
 
-## Tools & Platforms Alongside .NET
-- Splunk for centralized logging
-- Mixpanel for event tracking
-- Zendesk for support platform integration
-- Content Stack as CMS
-- SQL Server as primary database
-- REST APIs for all service communication
+## .NET Experience — Design Patterns I Use Regularly
+
+**Patterns I reach for by default.**
+
+- **Repository pattern** — encapsulate data access behind an interface
+- **CQRS with MediatR** — split commands and queries cleanly
+- **Factory pattern** — defer construction of complex objects
+- **Microservice architecture** patterns (when scale demands it)
+- **Monolithic architecture** — when the problem is small enough that microservices add cost without benefit
+
+## .NET Experience — Key Concepts I Use Daily
+
+> A quick tour of the .NET concepts I lean on every single sprint.
+
+**`async` / `await`**
+
+- I use `async` / `await` for **all I/O-bound operations** (DB calls, HTTP calls, file I/O).
+- **Avoid `async void`** (except for event handlers).
+- Use `ConfigureAwait(false)` in **libraries** to skip capturing the synchronisation context.
+
+**Dependency Injection**
+
+- .NET has built-in DI via `IServiceCollection`.
+- I register services as **Singleton**, **Scoped**, or **Transient** depending on lifetime.
+- **Scoped per HTTP request** is the most common choice (DbContext, unit-of-work).
+
+**Middleware Pipeline**
+
+- Request flows through middleware **in registration order**.
+- I have written **custom middleware** for logging, exception handling, and request correlation IDs.
+
+**Cloud & DevOps**
+
+- Deploy .NET applications to **Microsoft Azure**.
+- Manage CI/CD pipelines using **TeamCity** and **Azure DevOps**.
+- Use **GitHub** for source control.
+
+## .NET Experience — Tools and Platforms Alongside .NET
+
+**Stack I integrate with daily at Ingenio.**
+
+- **Splunk** — centralised logging
+- **Mixpanel** — event tracking and product analytics
+- **Zendesk** — support platform integration
+- **Contentstack** — headless CMS
+- **SQL Server** — primary OLTP database
+- **REST APIs** — default service-to-service communication
