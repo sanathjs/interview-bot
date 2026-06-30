@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getKnowledgeFiles, getKnowledgeChunks } from "@/lib/api";
 import { useTheme } from "@/components/ThemeProvider";
+import MarkdownBody from "@/components/MarkdownBody";
 
 interface KnowledgeFile {
   sourceFile: string;
@@ -55,15 +56,8 @@ function ChunkCard({ chunk, idx }: { chunk: KnowledgeChunk; idx: number }) {
         {chunk.sectionTitle || "(Untitled Section)"}
       </h2>
 
-      {/* Body content */}
-      <div style={{
-        fontSize: 14, lineHeight: 1.85,
-        color: C.text,
-        whiteSpace: "pre-wrap",
-        fontFamily: "inherit",
-      }}>
-        {chunk.body}
-      </div>
+      {/* Body content — rendered as markdown */}
+      <MarkdownBody content={chunk.body} />
 
       {/* Interview Angles (AI-generated question variants) */}
       {chunk.questions && chunk.questions.length > 0 && (
