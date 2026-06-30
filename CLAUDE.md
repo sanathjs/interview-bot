@@ -2,7 +2,7 @@
 
 > This file is auto-loaded into every Claude Code session in this repo. It captures conventions, architecture, and gotchas so Claude can be useful immediately.
 >
-> For full feature/architecture documentation, see [README.md](README.md). This file only covers what Claude specifically needs to know.
+> For full feature/architecture documentation, see [README.md](README.md). For visual flow diagrams (system overview, RAG flow, ingestion, DB failover, skill-gap, chat sequence), see [ARCHITECTURE.md](ARCHITECTURE.md). This file only covers what Claude specifically needs to know.
 
 ---
 
